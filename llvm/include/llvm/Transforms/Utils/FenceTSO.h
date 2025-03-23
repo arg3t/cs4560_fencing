@@ -7,7 +7,7 @@ namespace llvm {
 
 class FenceTSOPass : public PassInfoMixin<FenceTSOPass> {
 public:
-  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
 } // namespace llvm
