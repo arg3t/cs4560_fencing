@@ -361,6 +361,7 @@
 #include "llvm/Transforms/Vectorize/SandboxVectorizer/SandboxVectorizer.h"
 #include "llvm/Transforms/Vectorize/VectorCombine.h"
 #include "llvm/Transforms/Utils/FenceTSO.h"
+#include "llvm/Transforms/Utils/FencePSO.h"
 #include <optional>
 
 using namespace llvm;
