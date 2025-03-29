@@ -73,3 +73,8 @@ pythonenv*
 /clang/utils/analyzer/projects/*/RefScanBuildResults
 # automodapi puts generated documentation files here.
 /lldb/docs/python_api/
+
+
+# Mihnea's stuff
+*/CPackConfig.cmake
+*/CPackSourceConfig.cmake
