@@ -362,6 +362,7 @@
 #include "llvm/Transforms/Vectorize/VectorCombine.h"
 #include "llvm/Transforms/Utils/FenceTSO.h"
 #include "llvm/Transforms/Utils/FencePSO.h"
+#include "llvm/Transforms/Utils/FenceOptimizationPassProject.h"
 #include <optional>
 
 using namespace llvm;

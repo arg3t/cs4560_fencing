@@ -164,6 +164,7 @@ MODULE_PASS("view-callgraph", CallGraphViewerPass())
 MODULE_PASS("wholeprogramdevirt", WholeProgramDevirtPass())
 MODULE_PASS("fence-tso", FenceTSOPass())
 MODULE_PASS("fence-pso", FencePSOPass())
+MODULE_PASS("fence-pass-proj", FenceOptimizationPassProject())
 #undef MODULE_PASS
 
 #ifndef MODULE_PASS_WITH_PARAMS
