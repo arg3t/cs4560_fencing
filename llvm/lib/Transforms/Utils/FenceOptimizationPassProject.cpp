@@ -259,8 +259,11 @@ Node makeGraphUpwards(Instruction *root, Graph &graph) {
     if (node3 != NULL) {
       graph.addEdge(&node3, &node2);
       graph.addEdge(&node2, &node);
+      return node;
     }
   }
+  return NULL; // Do I return NULL here?
+  // paper is vague about this
 
 
 }
