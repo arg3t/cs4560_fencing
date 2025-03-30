@@ -123,108 +123,146 @@ using namespace llvm;
 //   }
 // }
 
-// Enum of node types, source, sink and fence
-enum NodeType {
-  Source,
-  Sink,
-  Fence
-};
+AtomicOrdering getOrdering(Instruction *inst) {
 
-
-// Fence Node structure stores parent BasicBlock, reference to fence, fence ordering (release/acquire/seq_cst)
-// Sink Node stores nothing
-// Source Node stores nothing 
+  if (isa<LoadInst>(inst)) {
+    return cast<LoadInst>(&inst)->getOrdering();
+  } else if (isa<StoreInst>(inst)) {
+    return cast<StoreInst>(&inst)->getOrdering();
+  } else if (isa<FenceInst>(inst)) {
+    return cast<FenceInst>(&inst)->getOrdering();
+  }
+  return AtomicOrdering::NotAtomic;
+}
 
 struct Node {
-  NodeType type;
-  BasicBlock *parentBB;
-  Instruction *fenceInst;
-  AtomicOrdering fenceOrder;
+  BasicBlock *BB;
+  Instruction *lastMemOp = nullptr;
+  AtomicOrdering order = AtomicOrdering::NotAtomic;
+  // Tells you if the node is after the last memory operation, place a fence accordingly
+  bool after = false;
+  std::vector<Node *> successors;
+  std::vector<Node *> predecessors;
 
-  Node(NodeType t, BasicBlock *bb, Instruction *fence, AtomicOrdering order)
-      : type(t), parentBB(bb), fenceInst(fence), fenceOrder(order) {}
+  Node(BasicBlock *bb) : BB(bb) {} // Can I have default constructor?
+  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order)
+      : BB(bb), lastMemOp(lastMemOp), order(order) {}
+  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order, bool after)
+      : BB(bb), lastMemOp(lastMemOp), order(order), after(after) {}
+
+  Node getNodeAfter(Instruction *inst) {
+    Node node = Node(inst->getParent(), inst, getOrdering(inst), true);
+    return node;
+  }
+
+  Node getNodeBefore(Instruction *inst) {
+    Node node = Node(inst->getParent(), inst, getOrdering(inst), false);
+    return node;
+  }
+
+  
+  bool operator==(const Node &other) const {
+    return BB == other.BB && lastMemOp == other.lastMemOp && order == other.order && after == other.after;
+  }
+
+  bool operator!=(const Node &other) const {
+    return !(*this == other);
+  }
+    
 };
 
-struct Edge {
+
+Node getNodeAtBeginning(BasicBlock *bb) {
+  Instruction *firstInst = &*bb->begin();
+  Node node = Node(bb, firstInst, getOrdering(firstInst), false);
+  node.after = false;
+  return node;
+
+}
+
+Node getNodeAtEnd(BasicBlock *bb) {
+  Instruction *lastInst = &*bb->rbegin();
+  Node node = Node(bb, lastInst, getOrdering(lastInst), true);
+  node.after = true;
+  return node;
+}
+
+Instruction* getLastInst(BasicBlock *bb) {
+  Instruction *lastInst = &*bb->rbegin();
+  return lastInst;
+}
+
+Instruction* getFirstInst(BasicBlock *bb) {
+  Instruction *firstInst = &*bb->begin();
+  return firstInst;
+}
+
+
+struct Graph {
   Node *source;
   Node *sink;
-  int weight;
-  Edge(Node *s, Node *d, int w) : source(s), sink(d), weight(w) {}
-
-};
-// Graph structure to hold nodes and edges
-
-class Graph {
-public:
-  Node *sourceNode;
-  Node *sinkNode;
   std::vector<Node *> nodes;
-  std::vector<Edge *> edges;
-
-  Graph(Node *source, Node *sink) : sourceNode(source), sinkNode(sink) {
-    nodes.push_back(source);
-    nodes.push_back(sink);
-  }
-  ~Graph() {
-    for (auto edge : edges) {
-      delete edge;
-    }
-    for (auto node : nodes) {
-      delete node;
-    }
-  }
+  std::vector<std::pair<Node *, Node *>> edges;
 
   void addNode(Node *node) {
     nodes.push_back(node);
   }
 
-  void addEdge(Node *source, Node *sink, int weight) {
-    edges.push_back(new Edge(source, sink, weight));
-  }
-
-  void printGraph() {
-    for (auto node : nodes) {
-      llvm::errs() << "Node Type: " << node->type << "\n";
-      llvm::errs() << "Parent BB: " << node->parentBB->getName() << "\n";
-      if (node->fenceInst) {
-        llvm::errs() << "Fence Inst: " << *node->fenceInst << "\n";
-        llvm::errs() << "Fence Order: " << (unsigned)node->fenceOrder << "\n";
-      }
-    }
+  void addEdge(Node *from, Node *to) {
+    edges.emplace_back(from, to);
+    from->successors.push_back(to);
+    to->predecessors.push_back(from);
   }
 };
 
 
+Node makeGraphUpwards(Instruction *root, Graph &graph) {
+  BasicBlock *bb = root->getParent();
 
-// For each function, traverse BB. 
-// Create a graph, add nodes and edges for all fence instructions.
+  // for inst an instruction before root, going upwards
 
-Node *sourceNode = new Node(Source, nullptr, nullptr, AtomicOrdering::NotAtomic);
-Node *sinkNode = new Node(Sink, nullptr, nullptr, AtomicOrdering::NotAtomic);
+  bool found_root = false;
+  // Reverse iterator to traverse the basic block in reverse order
+  for (auto it = bb->rbegin(); it != bb->rend(); ++it) {
+    Instruction *inst = &*it;
+    if (inst == &root) {
+      found_root = true;
+      continue;
+    }
+    if (!found_root) {
+      continue;
+    }
 
-Graph *graph = nullptr;
-
-void traverseFunction(Function &F) {
-  Graph *graph = new Graph(nullptr, nullptr);
-  Node *sourceNode = new Node(Source, nullptr, nullptr, AtomicOrdering::NotAtomic);
-  Node *sinkNode = new Node(Sink, nullptr, nullptr, AtomicOrdering::NotAtomic);
-  graph->addNode(sourceNode);
-  graph->addNode(sinkNode);
-
-  for (BasicBlock &BB : F) {
-    llvm::errs() << "Processing Basic Block: " << BB.getName() << "\n";
-    for (Instruction &I : BB) {
-      if (auto *Fence = dyn_cast<FenceInst>(&I)) {
-        llvm::errs() << "Found Fence instruction: " << *Fence << "\n";
-        // Node *fenceNode = new Node(NodeType::Fence, &BB, Fence, Fence->getOrdering());
-        // graph->addNode(fenceNode);
-        // graph->addEdge(sourceNode, fenceNode, 1); // Example weight
-      }
+    // If inst is a memory access, then node is getNodeAfter(inst), connectSource(node)
+    if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
+      auto node = Node(inst->getParent(), inst, getOrdering(inst), true);
+      graph.addNode(&node);
+      graph.addEdge(graph.source, &node);
+      return node;
     }
   }
 
-  // graph->printGraph();
-  // delete graph;
+  Node node = getNodeAtBeginning(bb);
+  graph.addNode(&node);
+  BasicBlock &first_bb_in_func = bb->getParent()->getEntryBlock();
+  if (bb == &first_bb_in_func) {
+    graph.addEdge(graph.source, &node);
+    return node;
+  } 
+
+  // iterate over all predecessors of bb
+  for (auto pred : predecessors(bb)) {
+    Node node2 = getNodeAtEnd(pred);
+    Instruction *inst2 = getLastInst(pred);
+
+    Node node3 = makeGraphUpwards(inst2, graph);
+    if (node3 != NULL) {
+      graph.addEdge(&node3, &node2);
+      graph.addEdge(&node2, &node);
+    }
+  }
+
+
 }
 
 
@@ -238,9 +276,6 @@ PreservedAnalyses FenceOptimizationPassProject::run(Module &M,
     if (F.isDeclaration()) {
       continue;
     }
-    graph = new Graph(sourceNode, sinkNode);
-    // Traverse the function and create a graph
-    traverseFunction(F);
   }
 
   return PreservedAnalyses::none();
