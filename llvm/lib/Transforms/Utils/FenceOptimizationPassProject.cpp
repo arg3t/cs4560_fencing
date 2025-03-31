@@ -225,7 +225,7 @@ Node makeGraphUpwards(Instruction *root, Graph &graph) {
   // Reverse iterator to traverse the basic block in reverse order
   for (auto it = bb->rbegin(); it != bb->rend(); ++it) {
     Instruction *inst = &*it;
-    if (inst == &root) {
+    if (inst == root) {
       found_root = true;
       continue;
     }
