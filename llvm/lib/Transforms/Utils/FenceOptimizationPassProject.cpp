@@ -22,6 +22,7 @@
 
 using namespace llvm;
 
+
 // void TraverseBBGraphFenceOptPass(BasicBlock &BB, AtomicOrdering order, Instruction *lastMemOp) {
 //   if (BB.empty()) {
 //     llvm::errs() << "Basic Block is empty.\n";
@@ -215,6 +216,8 @@ struct Edge {
   Edge* reverse;
 };
 
+using AList_t = std::map<uint64_t, std::vector<Edge>>;
+
 
 struct Graph {
   Node *source;
@@ -259,8 +262,8 @@ struct Graph {
     edges.push_back(std::make_pair(fromIndex, toIndex));
   }
 
-  std::map<uint64_t, std::vector<Edge>> buildAdjacencyList(uint32_t Capacity){
-    std::map<uint64_t, std::vector<Edge>> AdjacencyList;
+  AList_t buildAdjacencyList(uint32_t Capacity){
+    AList_t AdjacencyList;
 
     for (auto &[u,v] : edges){
       uint32_t c;
@@ -297,7 +300,7 @@ void augment(std::vector<Edge> Path){
 std::vector<Edge> FindPath(
     uint64_t Node,
     uint64_t Target,
-    std::map<uint64_t, std::vector<Edge>> AdjacencyList,
+    AList_t AdjacencyList,
     std::set<uint64_t> Visited
     ) {
   Visited.insert(Node);
@@ -322,8 +325,19 @@ std::vector<Edge> FindPath(
   return std::vector<Edge>{};
 }
 
-std::vector<Edge> FindPath(std::map<uint64_t, std::vector<Edge>> AdjacencyList){
+std::vector<Edge> FindPath(AList_t AdjacencyList){
   return FindPath(0, 1, AdjacencyList, std::set<uint64_t>{});
+}
+
+
+AList_t FlowGraph(AList_t AdjacencyList){
+ std::vector<Edge> Path = FindPath(AdjacencyList);
+
+ while(Path.size() > 0){
+   augment(Path);
+ }
+
+ return AdjacencyList;
 }
 
 
