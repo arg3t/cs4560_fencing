@@ -14,6 +14,8 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <string>
+
 using namespace llvm;
 
 // void TraverseBBGraphFenceOptPass(BasicBlock &BB, AtomicOrdering order, Instruction *lastMemOp) {
@@ -140,6 +142,7 @@ struct Node {
   BasicBlock *BB;
   Instruction *lastMemOp = nullptr;
   AtomicOrdering order = AtomicOrdering::NotAtomic;
+  string name = "";
   // Tells you if the node is after the last memory operation, place a fence accordingly
   bool after = false;
   std::vector<Node *> successors;
@@ -163,7 +166,7 @@ struct Node {
 
 
   bool operator==(const Node &other) const {
-    return BB == other.BB && lastMemOp == other.lastMemOp && order == other.order && after == other.after;
+    return BB == other.BB && lastMemOp == other.lastMemOp && order == other.order && after == other.after && name == other.name;
   }
 
   bool operator!=(const Node &other) const {
@@ -202,8 +205,9 @@ Instruction* getFirstInst(BasicBlock *bb) {
 struct Graph {
   Node *source;
   Node *sink;
+
   std::vector<Node *> nodes;
-  std::vector<std::pair<Node *, Node *>> edges;
+  std::vector<std::pair<int, int>> edges;
 
   void addNode(Node *node) {
     for (auto existingNode : nodes) {
@@ -215,9 +219,30 @@ struct Graph {
   }
 
   void addEdge(Node *from, Node *to) {
-    edges.emplace_back(from, to);
-    from->successors.push_back(to);
-    to->predecessors.push_back(from);
+    int fromIndex = -1;
+    int toIndex = -1;
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      if (*nodes[i] == *from) {
+        fromIndex = i;
+      }
+      if (*nodes[i] == *to) {
+        toIndex = i;
+      }
+    }
+
+    if (fromIndex == -1 || toIndex == -1) {
+      llvm::errs() << "Error: Node not found in graph.\n";
+      return;
+    }
+
+    // Check if the edge already exists
+    for (const auto &edge : edges) {
+      if (edge.first == fromIndex && edge.second == toIndex) {
+        return; // Edge already exists
+      }
+    }
+    edges.push_back(std::make_pair(fromIndex, toIndex));
   }
 };
 
@@ -331,7 +356,7 @@ Node makeGraphDownwards(Instruction *root, Graph &graph) {
 }
 
 // #include "llvm/IR/AtomicOrdering.h"
-#include <string>
+
 
 std::string atomicOrderingToString(llvm::AtomicOrdering order) {
   switch (order) {
@@ -348,21 +373,24 @@ std::string atomicOrderingToString(llvm::AtomicOrdering order) {
 
 void printGraph(const Graph &graph) {
   llvm::errs() << "Graph Nodes:\n";
-  for (auto node : graph.nodes) {
-    llvm::errs() << "  Node in BB: " << node->BB->getNumber()
-                 << ", LastMemOp: "
-                 << (node->lastMemOp ? node->lastMemOp->getOpcodeName() : "None");
-    if(node -> lastMemOp != nullptr)
-       llvm::errs() << ", Instruction: " << (*node->lastMemOp);
-    else
-      llvm::errs() << "Instruction: " << "NOP";
-    llvm::errs() << ", Ordering: " << atomicOrderingToString(node->order)
+  for (int i = 0; i < graph.nodes.size(); ++i) {
+    Node *node = graph.nodes[i];
+    llvm::errs() << "  Node " << i << ": "
+                  << "  Name: " << node->name
+                  << "  Node in BB: " << node->BB->getNumber()
+                  << ", LastMemOp: "
+                  << (node->lastMemOp ? node->lastMemOp->getOpcodeName() : "None");
+              if(node -> lastMemOp != nullptr)
+              llvm::errs() << ", Instruction: " << (*node->lastMemOp);
+              else
+              llvm::errs() << "Instruction: " << "NOP";
+              llvm::errs() << ", Ordering: " << atomicOrderingToString(node->order)
                  << ", after: " << (node->after ? "true\n" : "false\n");
   }
   llvm::errs() << "Graph Edges:\n";
   for (auto edge : graph.edges) {
-    llvm::errs() << "  Edge from BB: " << edge.first->BB->getNumber()
-                 << " to BB: " << edge.second->BB->getNumber() << "\n";
+    llvm::errs() << "  Edge from BB: " << edge.first
+                 << " to BB: " << edge.second<< "\n";
   }
 }
 
@@ -404,10 +432,13 @@ PreservedAnalyses FenceOptimizationPassProject::run(Module &M,
       continue;
     }
     Node source = Node(&F.getEntryBlock());
+    source.name = "source";
     Node sink = Node(&F.getEntryBlock());
+    sink.name = "sink";
     Graph graph = Graph();
     graph.source = &source;
     graph.sink = &sink;
+
 
     graph.addNode(&source);
     graph.addNode(&sink);
