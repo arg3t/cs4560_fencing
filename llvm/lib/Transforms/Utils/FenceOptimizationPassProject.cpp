@@ -269,6 +269,120 @@ Node makeGraphUpwards(Instruction *root, Graph &graph) {
 }
 
 
+Node makeGraphDownwards(Instruction *root, Graph &graph) {
+  // Get the basic block of the root instruction.
+  BasicBlock *bb = root->getParent();
+
+  // Traverse the instructions in 'bb' starting after 'root'
+  bool foundRoot = false;
+  for (auto it = bb->begin(); it != bb->end(); ++it) {
+    Instruction *inst = &*it;
+    if (inst == root) {
+      foundRoot = true;
+      continue;
+    }
+    if (!foundRoot)
+      continue;
+
+    // Check if the instruction is a memory access or a return.
+    if (isa<LoadInst>(inst) || isa<StoreInst>(inst) || isa<ReturnInst>(inst)) {
+      // Create a node *before* the instruction.
+      // Node *node = new Node(getNodeBefore(inst));
+      Node *node = new Node(inst->getParent(), inst, getOrdering(inst), false);
+      graph.addNode(node);
+      // Connect this node to the sink.
+      graph.addEdge(node, graph.sink);
+      return *node;
+    }
+  }
+
+  // No memory access or return instruction was found in the current block.
+  // Get the node at the end of the basic block.
+  Node *node = new Node(getNodeAtEnd(bb));
+  graph.addNode(node);
+
+  // For every successor basic block of the current basic block...
+  for (BasicBlock *succ : successors(bb)) {
+    // Create a node at the beginning of the successor block.
+    Node* node2 = new Node(getNodeAtBeginning(succ));
+    graph.addNode(node2);
+    // Get the first instruction in the successor basic block.
+    Instruction *inst2 = getFirstInst(succ);
+    // Recursively build the downward graph starting at inst2.
+    Node node3 = makeGraphDownwards(inst2, graph);
+    if (node3 != NULL) {
+      // Connect the nodes:
+      // 1. Connect the current block's end node to the successor's beginning node.
+      graph.addEdge(node, node2);
+      // 2. Connect the successor beginning node to the node returned by recursion.
+      graph.addEdge(node2, &node3);
+      return *node;
+    }
+  }
+
+  // If none of the successor branches return a node, return nullptr.
+  return NULL;
+}
+
+// #include "llvm/IR/AtomicOrdering.h"
+#include <string>
+
+std::string atomicOrderingToString(llvm::AtomicOrdering order) {
+  switch (order) {
+    case llvm::AtomicOrdering::NotAtomic:            return "NotAtomic";
+    case llvm::AtomicOrdering::Unordered:              return "Unordered";
+    case llvm::AtomicOrdering::Monotonic:              return "Monotonic";
+    case llvm::AtomicOrdering::Acquire:                return "Acquire";
+    case llvm::AtomicOrdering::Release:                return "Release";
+    case llvm::AtomicOrdering::AcquireRelease:         return "AcquireRelease";
+    case llvm::AtomicOrdering::SequentiallyConsistent: return "SequentiallyConsistent";
+    default:                                           return "Unknown";
+  }
+}
+
+void printGraph(const Graph &graph) {
+  llvm::errs() << "Graph Nodes:\n";
+  for (auto node : graph.nodes) {
+    llvm::errs() << "  Node in BB: " << node->BB->getName().str()
+                 << ", LastMemOp: " 
+                 << (node->lastMemOp ? node->lastMemOp->getOpcodeName() : "None")
+                 << ", Ordering: " << atomicOrderingToString(node->order)
+                 << ", after: " << (node->after ? "true\n" : "false\n");
+  }
+  llvm::errs() << "Graph Edges:\n";
+  for (auto edge : graph.edges) {
+    llvm::errs() << "  Edge from BB: " << edge.first->BB->getName().str()
+                 << " to BB: " << edge.second->BB->getName().str() << "\n";
+  }
+}
+
+// Function TransformFunction(fun)
+// Iterates over every fence instruction in the function 'fun', builds the upward and downward graphs,
+// and connects them. Finally, it prints the resulting graph.
+void TransformFunction(Function *fun, Graph &graph) {
+  // Iterate over each basic block in the function.
+  for (auto &bb : *fun) {
+    // Iterate over each instruction in the basic block.
+    for (auto &inst : bb) {
+      // Check if the instruction is a fence.
+      if (isa<FenceInst>(&inst)) {
+        // For the fence instruction, build the upward and downward graphs.
+        Node nodeBeforeFence = makeGraphUpwards(&inst, graph);
+        Node nodeAfterFence = makeGraphDownwards(&inst, graph);
+        // If both nodes exist, connect them.
+        if (nodeBeforeFence != nullptr && nodeAfterFence != nullptr) {
+          graph.addNode(&nodeBeforeFence);
+          graph.addNode(&nodeAfterFence);
+          graph.addEdge(&nodeBeforeFence, &nodeAfterFence);
+        }
+      }
+    }
+  }
+  
+  // Finally, print the graph.
+  printGraph(graph);
+}
+
 
 PreservedAnalyses FenceOptimizationPassProject::run(Module &M,
                                       ModuleAnalysisManager &AM) {
@@ -279,6 +393,17 @@ PreservedAnalyses FenceOptimizationPassProject::run(Module &M,
     if (F.isDeclaration()) {
       continue;
     }
+    Node source = Node(&F.getEntryBlock());
+    Node sink = Node(&F.getEntryBlock());
+    Graph graph = Graph();
+    graph.source = &source;
+    graph.sink = &sink;
+
+    graph.addNode(&source);
+    graph.addNode(&sink);
+
+    // Traverse the function to build the graph.
+    TransformFunction(&F, graph);
   }
 
   return PreservedAnalyses::none();
