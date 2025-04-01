@@ -224,7 +224,7 @@ struct Graph {
   Node *sink;
 
   std::vector<Node *> nodes;
-  std::vector<std::pair<int, int>> edges;
+  std::vector<std::pair<uint64_t, uint64_t>> edges;
 
   void addNode(Node *node) {
     for (auto existingNode : nodes) {
@@ -233,6 +233,14 @@ struct Graph {
       }
     }
     nodes.push_back(node);
+  }
+
+  Node* getNode(uint64_t idx) {
+    if (idx >= nodes.size())
+      return nullptr;
+
+    auto &node = nodes[idx];
+    return &node;
   }
 
   void addEdge(Node *from, Node *to) {
@@ -273,8 +281,8 @@ struct Graph {
         c = Capacity;
 
       auto e = Edge{u, v, c, false, nullptr};
-      auto re = Edge{v,u, 0, true, e};
-      e.reverse = re;
+      auto re = Edge{v,u, 0, true, &e};
+      e.reverse = &re;
 
       AdjacencyList[u].push_back(e);
       AdjacencyList[v].push_back(re);
@@ -293,7 +301,7 @@ void augment(std::vector<Edge> Path){
 
   for(auto &E : Path){
     E.capacity -= bottleneck;
-    E.reverse->capacity -= bottleneck;
+    E.reverse->capacity += bottleneck;
   }
 }
 
@@ -340,6 +348,46 @@ AList_t FlowGraph(AList_t AdjacencyList){
  return AdjacencyList;
 }
 
+
+void MarkVertices(uint64_t Node, AList_t AdjacencyList, std::set<uint64_t> Marked){
+  Marked.insert(Node);
+  for(auto &E : AdjacencyList[Node]){
+    if(Marked.find(E.dst) != Marked.end())
+      continue;
+
+    if(E.capacity == 0)
+      continue;
+
+    MarkVertices(E.dst, AdjacencyList, Marked);
+  }
+}
+
+
+std::set<uint64_t> MarkVertices(AList_t AdjacencyList){
+  std::set<uint64_t> Marked{};
+
+  MarkVertices(0, AdjacencyList, Marked);
+
+  return Marked;
+}
+
+std::vector<Edge> MinCut(AList_t AdjacencyList){
+  auto Marked = MarkVertices(AdjacencyList);
+
+  std::vector<Edge> MinCutEdges{};
+
+  for (const auto &[v, edges] : AdjacencyList){
+    for (const auto &E : edges){
+      if(E.residual)
+        continue;
+
+      if (Marked.find(E.src) != Marked.end() && Marked.find(E.dst) == Marked.end())
+        MinCutEdges.push_back(E);
+    }
+  }
+
+  return MinCutEdges;
+}
 
 
 Node makeGraphUpwards(Instruction *root, Graph &graph) {
@@ -540,6 +588,38 @@ PreservedAnalyses FenceOptimizationPassProject::run(Module &M,
 
     // Traverse the function to build the graph.
     TransformFunction(&F, graph);
+
+    llvm::errs() << "Building AdjacencyList from Graph!\n";
+    AList_t ResidualGraph = graph.buildAdjacencyList(1);
+    llvm::errs() << "Flowing Graph!\n";
+    FlowGraph(ResidualGraph);
+    llvm::errs() << "Extracting Min-Cut from Graph!\n";
+
+    auto MinCutEdges = MinCut(ResidualGraph);
+
+    llvm::errs() << "Number of edges in min-cut: " << MinCutEdges.size();
+    for(const auto &E : MinCutEdges) {
+      llvm::errs() << "\n  Src: " << E.src
+                   << "\n  Dst: " << E.dst
+                   << "\n  Capacity: " << E.capacity
+                   << "\n  Is Residual?: " << E.residual
+                   << "\n  Residual: " << E.reverse->capacity;
+    }
+
+
+    llvm::errs() << "\nInserting fences in new **optimal** positions.\n";
+
+    for(const auto &E : MinCutEdges) {
+      if (E.src == 0 || E.dst == 1)
+        continue;
+      auto src = graph.getNode(E.src);
+      auto dst = graph.getNode(E.dst);
+
+      assert(src != nullptr);
+      assert(dst != nullptr);
+
+      // TODO: Test
+    }
   }
 
   return PreservedAnalyses::none();
