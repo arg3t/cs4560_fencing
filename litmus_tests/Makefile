@@ -2,7 +2,7 @@ CXX = ../build/bin/clang++
 SRC = $(wildcard *.cpp)
 LLVM_IR = $(SRC:.cpp=.ll)
 BITCODE = $(SRC:.cpp=.bc)
-CXXFLAGS = -O0 -std=c++17 -emit-llvm
+CXXFLAGS = -O2 -std=c++17 -emit-llvm
 
 all: $(LLVM_IR) $(BITCODE)
 

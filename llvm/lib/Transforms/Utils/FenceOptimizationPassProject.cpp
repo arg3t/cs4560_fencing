@@ -1,5 +1,6 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Transforms/Utils/FenceOptimizationPassProject.h"
 #include "llvm/IR/Function.h"
@@ -160,7 +161,7 @@ struct Node {
     return node;
   }
 
-  
+
   bool operator==(const Node &other) const {
     return BB == other.BB && lastMemOp == other.lastMemOp && order == other.order && after == other.after;
   }
@@ -168,7 +169,7 @@ struct Node {
   bool operator!=(const Node &other) const {
     return !(*this == other);
   }
-    
+
 };
 
 
@@ -253,7 +254,7 @@ Node makeGraphUpwards(Instruction *root, Graph &graph) {
   if (bb == &first_bb_in_func) {
     graph.addEdge(graph.source, &node);
     return node;
-  } 
+  }
 
   // iterate over all predecessors of bb
   for (auto pred : predecessors(bb)) {
@@ -348,17 +349,20 @@ std::string atomicOrderingToString(llvm::AtomicOrdering order) {
 void printGraph(const Graph &graph) {
   llvm::errs() << "Graph Nodes:\n";
   for (auto node : graph.nodes) {
-    llvm::errs() << "  Node in BB: " << node->BB->getName().str()
-                 << ", LastMemOp: " 
-                 << (node->lastMemOp ? node->lastMemOp->getOpcodeName() : "None")
-                 << ", Instruction: " << (node->lastMemOp ? *node->lastMemOp : "None")
-                 << ", Ordering: " << atomicOrderingToString(node->order)
+    llvm::errs() << "  Node in BB: " << node->BB->getNumber()
+                 << ", LastMemOp: "
+                 << (node->lastMemOp ? node->lastMemOp->getOpcodeName() : "None");
+    if(node -> lastMemOp != nullptr)
+       llvm::errs() << ", Instruction: " << (*node->lastMemOp);
+    else
+      llvm::errs() << "Instruction: " << "NOP";
+    llvm::errs() << ", Ordering: " << atomicOrderingToString(node->order)
                  << ", after: " << (node->after ? "true\n" : "false\n");
   }
   llvm::errs() << "Graph Edges:\n";
   for (auto edge : graph.edges) {
-    llvm::errs() << "  Edge from BB: " << edge.first->BB->getName().str()
-                 << " to BB: " << edge.second->BB->getName().str() << "\n";
+    llvm::errs() << "  Edge from BB: " << edge.first->BB->getNumber()
+                 << " to BB: " << edge.second->BB->getNumber() << "\n";
   }
 }
 
@@ -384,7 +388,7 @@ void TransformFunction(Function *fun, Graph &graph) {
       }
     }
   }
-  
+
   // Finally, print the graph.
   printGraph(graph);
 }

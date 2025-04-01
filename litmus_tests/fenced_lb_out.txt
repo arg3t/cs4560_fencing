@@ -1,0 +1,161 @@
+Function: _Z7thread1v
+Traversing Basic Block: 
+Processing instruction:   %1 = load atomic i32, ptr @x monotonic, align 4
+Processing instruction:   store i32 %1, ptr @r1, align 4, !tbaa !5
+  Found Store instruction with ordering: 0
+    Inserting fence before Store (following a Load) due to ordering constraints.
+Processing instruction:   store atomic i32 1, ptr @y monotonic, align 4
+  Found Store instruction with ordering: 2
+    Inserting fence before Store (following a Store) due to ordering constraints.
+Processing instruction:   ret void
+  Encountered Terminator instruction.
+Function: _Z7thread2v
+Traversing Basic Block: 
+Processing instruction:   %1 = load atomic i32, ptr @y monotonic, align 4
+Processing instruction:   store i32 %1, ptr @r2, align 4, !tbaa !5
+  Found Store instruction with ordering: 0
+    Inserting fence before Store (following a Load) due to ordering constraints.
+Processing instruction:   store atomic i32 1, ptr @x monotonic, align 4
+  Found Store instruction with ordering: 2
+    Inserting fence before Store (following a Store) due to ordering constraints.
+Processing instruction:   ret void
+  Encountered Terminator instruction.
+Function: main
+Traversing Basic Block: 
+Processing instruction:   %1 = alloca %"class.std::unique_ptr", align 8
+Processing instruction:   %2 = alloca %"class.std::unique_ptr", align 8
+Processing instruction:   %3 = alloca %"class.std::thread", align 8
+Processing instruction:   %4 = alloca %"class.std::thread", align 8
+Processing instruction:   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %3) #11
+Processing instruction:   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %2)
+Processing instruction:   store i64 0, ptr %3, align 8, !tbaa !5
+Processing instruction:   %5 = tail call noalias noundef nonnull dereferenceable(16) ptr @_Znwm(i64 noundef 16) #12
+Processing instruction:   store ptr getelementptr inbounds nuw inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %5, align 8, !tbaa !10
+  Found Store instruction with ordering: 0
+    Inserting fence before Store (following a Store) due to ordering constraints.
+Processing instruction:   %6 = getelementptr inbounds nuw i8, ptr %5, i64 8
+Processing instruction:   store ptr @_Z7thread1v, ptr %6, align 8, !tbaa !12
+  Found Store instruction with ordering: 0
+    Inserting fence before Store (following a Store) due to ordering constraints.
+Processing instruction:   store ptr %5, ptr %2, align 8, !tbaa !15
+  Found Store instruction with ordering: 0
+    Inserting fence before Store (following a Store) due to ordering constraints.
+Processing instruction:   invoke void @_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE(ptr noundef nonnull align 8 dereferenceable(8) %3, ptr noundef nonnull %2, ptr noundef nonnull @_ZNSt6thread24_M_thread_deps_never_runEv)
+          to label %7 unwind label %14
+  Encountered Terminator instruction.
+Function: llvm.lifetime.start.p0
+Function: __gxx_personality_v0
+Function: _ZNSt6thread4joinEv
+Function: llvm.lifetime.end.p0
+Function: _ZSt9terminatev
+Function: _ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE
+Function: _Znwm
+Function: _ZdlPvm
+Function: _ZNSt6thread24_M_thread_deps_never_runEv
+Traversing Basic Block: 
+Processing instruction:   ret void
+  Encountered Terminator instruction.
+Function: _ZNSt6thread6_StateD2Ev
+Function: _ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEED0Ev
+Traversing Basic Block: 
+Processing instruction:   tail call void @_ZNSt6thread6_StateD2Ev(ptr noundef nonnull align 8 dereferenceable(16) %0) #11
+Processing instruction:   tail call void @_ZdlPvm(ptr noundef nonnull %0, i64 noundef 16) #12
+Processing instruction:   ret void
+  Encountered Terminator instruction.
+Function: _ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEE6_M_runEv
+Traversing Basic Block: 
+Processing instruction:   %2 = getelementptr inbounds nuw i8, ptr %0, i64 8
+Processing instruction:   %3 = load ptr, ptr %2, align 8, !tbaa !5
+Processing instruction:   tail call void %3()
+Processing instruction:   ret void
+  Encountered Terminator instruction.
+Function: _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l
+Function: _Z7thread1v
+Graph Nodes:
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+Graph Edges:
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+Function: _Z7thread2v
+Graph Nodes:
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+Graph Edges:
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+Function: main
+Graph Nodes:
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: true
+  Node in BB: , LastMemOp: store, Ordering: Unordered, after: false
+Graph Edges:
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+  Edge from BB:  to BB: 
+Function: llvm.lifetime.start.p0
+Function: __gxx_personality_v0
+Function: _ZNSt6thread4joinEv
+Function: llvm.lifetime.end.p0
+Function: _ZSt9terminatev
+Function: _ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE
+Function: _Znwm
+Function: _ZdlPvm
+Function: _ZNSt6thread24_M_thread_deps_never_runEv
+Graph Nodes:
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+Graph Edges:
+Function: _ZNSt6thread6_StateD2Ev
+Function: _ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEED0Ev
+Graph Nodes:
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+Graph Edges:
+Function: _ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEE6_M_runEv
+Graph Nodes:
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+  Node in BB: , LastMemOp: None, Ordering: NotAtomic, after: false
+Graph Edges:
+Function: _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l
