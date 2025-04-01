@@ -251,7 +251,8 @@ AList_t FlowGraph(AList_t AdjacencyList) {
 }
 
 void MarkVertices(uint64_t Node, AList_t AdjacencyList,
-                  std::set<uint64_t> Marked) {
+                  std::set<uint64_t> &Marked) {
+  llvm::errs() << "Marking " << Node << "\n";
   Marked.insert(Node);
   for (auto &E : AdjacencyList[Node]) {
     if (Marked.find(E->dst) != Marked.end())
@@ -275,12 +276,22 @@ std::set<uint64_t> MarkVertices(AList_t AdjacencyList) {
 std::vector<Edge*> MinCut(AList_t AdjacencyList) {
   auto Marked = MarkVertices(AdjacencyList);
 
+  for(auto i : Marked ) {
+    llvm::errs() << i << ", ";
+  }
+  llvm::errs() << "\n";
+
   std::vector<Edge*> MinCutEdges{};
 
   for (const auto &[v, edges] : AdjacencyList) {
     for (const auto &E : edges) {
       if (E->residual)
         continue;
+
+      llvm::errs() << "{src: " << E->src << ", dst: " << E->dst
+                   << ", smark: " << (Marked.find(E->src) != Marked.end())
+                   << ", dmark: " << (Marked.find(E->dst) == Marked.end())
+                   << "}\n";
 
       if (Marked.find(E->src) != Marked.end() &&
           Marked.find(E->dst) == Marked.end())
@@ -452,6 +463,7 @@ void TransformFunction(Function *fun, Graph &graph) {
   for (auto &bb : *fun) {
     // Iterate over each instruction in the basic block.
     for (auto &inst : bb) {
+      llvm::errs() << inst;
       // Check if the instruction is a fence.
       if (isa<FenceInst>(&inst)) {
         // For the fence instruction, build the upward and downward graphs.
@@ -513,6 +525,7 @@ PreservedAnalyses FenceOptimization::run(Module &M, ModuleAnalysisManager &AM) {
     for (const auto &E : MinCutEdges) {
       if (E->src == 0 || E->dst == 1)
         continue;
+
       auto src = graph.getNode(E->src);
       auto dst = graph.getNode(E->dst);
 
