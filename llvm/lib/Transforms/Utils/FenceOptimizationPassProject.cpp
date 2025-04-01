@@ -205,6 +205,11 @@ struct Graph {
   std::vector<std::pair<Node *, Node *>> edges;
 
   void addNode(Node *node) {
+    for (auto existingNode : nodes) {
+      if (*existingNode == *node) {
+        return;
+      }
+    }
     nodes.push_back(node);
   }
 
@@ -346,6 +351,7 @@ void printGraph(const Graph &graph) {
     llvm::errs() << "  Node in BB: " << node->BB->getName().str()
                  << ", LastMemOp: " 
                  << (node->lastMemOp ? node->lastMemOp->getOpcodeName() : "None")
+                 << ", Instruction: " << (node->lastMemOp ? *node->lastMemOp : "None")
                  << ", Ordering: " << atomicOrderingToString(node->order)
                  << ", after: " << (node->after ? "true\n" : "false\n");
   }
