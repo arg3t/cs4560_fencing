@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <map>
+#include <ostream>
 #include <set>
 #include <string>
 #include <vector>
@@ -74,9 +75,26 @@ struct Edge {
   bool residual;
 
   Edge *reverse;
+
+  Edge(uint64_t src, uint64_t dst, uint32_t capacity, bool residual,
+       Edge *reverse)
+      : src(src), dst(dst), capacity(capacity),
+        residual(residual), reverse(reverse) {};
+
+  Edge(uint64_t src, uint64_t dst, uint32_t capacity, bool residual)
+      : src(src), dst(dst), capacity(capacity),
+        residual(residual), reverse(nullptr) {};
+
+                std::ostream
+            & operator<<(std::ostream &os) {
+    os << "{src: " << src << ", dst: " << dst << ", capacity: " << capacity
+       << ", residual: " << residual << "}";
+    return os;
+  }
 };
 
-using AList_t = std::map<uint64_t, std::vector<Edge>>;
+
+using AList_t = std::map<uint64_t, std::vector<Edge*>>;
 
 struct Graph {
   Node *source;
@@ -139,9 +157,9 @@ struct Graph {
       else
         c = Capacity;
 
-      auto e = Edge{u, v, c, false, nullptr};
-      auto re = Edge{v, u, 0, true, &e};
-      e.reverse = &re;
+      auto e = new Edge(u, v, c, false);
+      auto re = new Edge(v, u, 0, true, e);
+      e->reverse = re;
 
       AdjacencyList[u].push_back(e);
       AdjacencyList[v].push_back(re);
@@ -175,52 +193,58 @@ Instruction *getFirstInst(BasicBlock *bb) {
   return firstInst;
 }
 
-void augment(std::vector<Edge> Path) {
+void augment(std::vector<Edge*> Path) {
   uint32_t bottleneck = 0xFFFFFFFF;
 
   for (auto &E : Path) {
-    bottleneck = std::min(E.capacity, bottleneck);
+    bottleneck = std::min(E->capacity, bottleneck);
   }
 
+  llvm::errs() << "Flowing " << bottleneck << " through path!\n";
   for (auto &E : Path) {
-    E.capacity -= bottleneck;
-    E.reverse->capacity += bottleneck;
+    E->capacity -= bottleneck;
+    E->reverse->capacity += bottleneck;
   }
 }
 
-std::vector<Edge> FindPath(uint64_t Node, uint64_t Target,
+std::vector<Edge*> FindPath(uint64_t Node, uint64_t Target,
                            AList_t AdjacencyList, std::set<uint64_t> Visited) {
   Visited.insert(Node);
 
   for (auto &E : AdjacencyList[Node]) {
-    if (Visited.find(E.dst) != Visited.end())
+    if (Visited.find(E->dst) != Visited.end())
       continue;
 
-    if (E.capacity == 0)
+    if (E->capacity == 0)
       continue;
 
-    if (E.dst == Target)
-      return std::vector<Edge>{E};
+    if (E->dst == Target)
+      return std::vector<Edge*>{E};
 
-    auto Path = FindPath(E.dst, Target, AdjacencyList, Visited);
+    auto Path = FindPath(E->dst, Target, AdjacencyList, Visited);
     if (Path.size() > 0) {
       Path.insert(Path.begin(), E);
       return Path;
     }
   }
 
-  return std::vector<Edge>{};
+  return std::vector<Edge*>{};
 }
 
-std::vector<Edge> FindPath(AList_t AdjacencyList) {
+std::vector<Edge*> FindPath(AList_t AdjacencyList) {
   return FindPath(0, 1, AdjacencyList, std::set<uint64_t>{});
 }
 
 AList_t FlowGraph(AList_t AdjacencyList) {
-  std::vector<Edge> Path = FindPath(AdjacencyList);
+  std::vector<Edge*> Path = FindPath(AdjacencyList);
 
   while (Path.size() > 0) {
+    for(const auto &E : Path){
+      llvm::errs() <<"{src: " << E->src << ", dst: " << E->dst << ", capacity: " << E->capacity << ", residual: "<< E->residual << "}" << "->";
+    }
+    llvm::errs() << "\n";
     augment(Path);
+    Path = FindPath(AdjacencyList);
   }
 
   return AdjacencyList;
@@ -230,13 +254,13 @@ void MarkVertices(uint64_t Node, AList_t AdjacencyList,
                   std::set<uint64_t> Marked) {
   Marked.insert(Node);
   for (auto &E : AdjacencyList[Node]) {
-    if (Marked.find(E.dst) != Marked.end())
+    if (Marked.find(E->dst) != Marked.end())
       continue;
 
-    if (E.capacity == 0)
+    if (E->capacity == 0)
       continue;
 
-    MarkVertices(E.dst, AdjacencyList, Marked);
+    MarkVertices(E->dst, AdjacencyList, Marked);
   }
 }
 
@@ -248,18 +272,18 @@ std::set<uint64_t> MarkVertices(AList_t AdjacencyList) {
   return Marked;
 }
 
-std::vector<Edge> MinCut(AList_t AdjacencyList) {
+std::vector<Edge*> MinCut(AList_t AdjacencyList) {
   auto Marked = MarkVertices(AdjacencyList);
 
-  std::vector<Edge> MinCutEdges{};
+  std::vector<Edge*> MinCutEdges{};
 
   for (const auto &[v, edges] : AdjacencyList) {
     for (const auto &E : edges) {
-      if (E.residual)
+      if (E->residual)
         continue;
 
-      if (Marked.find(E.src) != Marked.end() &&
-          Marked.find(E.dst) == Marked.end())
+      if (Marked.find(E->src) != Marked.end() &&
+          Marked.find(E->dst) == Marked.end())
         MinCutEdges.push_back(E);
     }
   }
@@ -478,19 +502,19 @@ PreservedAnalyses FenceOptimization::run(Module &M, ModuleAnalysisManager &AM) {
 
     llvm::errs() << "Number of edges in min-cut: " << MinCutEdges.size();
     for (const auto &E : MinCutEdges) {
-      llvm::errs() << "\n  Src: " << E.src << "\n  Dst: " << E.dst
-                   << "\n  Capacity: " << E.capacity
-                   << "\n  Is Residual?: " << E.residual
-                   << "\n  Residual: " << E.reverse->capacity;
+      llvm::errs() << "\n  Src: " << E->src << "\n  Dst: " << E->dst
+                   << "\n  Capacity: " << E->capacity
+                   << "\n  Is Residual?: " << E->residual
+                   << "\n  Residual: " << E->reverse->capacity;
     }
 
     llvm::errs() << "\nInserting fences in new **optimal** positions.\n";
 
     for (const auto &E : MinCutEdges) {
-      if (E.src == 0 || E.dst == 1)
+      if (E->src == 0 || E->dst == 1)
         continue;
-      auto src = graph.getNode(E.src);
-      auto dst = graph.getNode(E.dst);
+      auto src = graph.getNode(E->src);
+      auto dst = graph.getNode(E->dst);
 
       assert(src != nullptr);
       assert(dst != nullptr);
