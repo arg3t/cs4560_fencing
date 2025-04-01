@@ -158,7 +158,7 @@ PreservedAnalyses run(Module &M,
 
 
 /* New PM Registration */
-llvm::PassPluginLibraryInfo getPassPluginInfo() {
+llvm::PassPluginLibraryInfo getFenceTSOPassPluginInfo() {
   return {LLVM_PLUGIN_API_VERSION, "Fence TSO", LLVM_VERSION_STRING,
           [](PassBuilder &PB) {
             // PB.registerVectorizerStartEPCallback(
@@ -180,6 +180,6 @@ llvm::PassPluginLibraryInfo getPassPluginInfo() {
 #ifndef LLVM_BYE_LINK_INTO_TOOLS
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo() {
-  return getPassPluginInfo();
+  return getFenceTSOPassPluginInfo();
 }
 #endif

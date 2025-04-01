@@ -1,7 +1,7 @@
 ; ModuleID = 'iriw.cpp'
 source_filename = "iriw.cpp"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-unknown-linux-gnu"
+target triple = "x86_64-pc-linux-gnu"
 
 module asm ".globl _ZSt21ios_base_library_initv"
 
@@ -27,9 +27,9 @@ $_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEE6_M_runEv = comdat a
 
 $_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = comdat any
 
-$_ZTINSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = comdat any
-
 $_ZTSNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = comdat any
+
+$_ZTINSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = comdat any
 
 @x = dso_local local_unnamed_addr global { i32 } zeroinitializer, align 4
 @y = dso_local local_unnamed_addr global { i32 } zeroinitializer, align 4
@@ -44,24 +44,24 @@ $_ZTSNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = comdat any
 @.str.3 = private unnamed_addr constant [5 x i8] c" r4=\00", align 1
 @.str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = linkonce_odr dso_local unnamed_addr constant { [5 x ptr] } { [5 x ptr] [ptr null, ptr @_ZTINSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, ptr @_ZNSt6thread6_StateD2Ev, ptr @_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEED0Ev, ptr @_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEE6_M_runEv] }, comdat, align 8
-@_ZTINSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = linkonce_odr dso_local constant { ptr, ptr, ptr } { ptr getelementptr inbounds (ptr, ptr @_ZTVN10__cxxabiv120__si_class_type_infoE, i64 2), ptr @_ZTSNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, ptr @_ZTINSt6thread6_StateE }, comdat, align 8
 @_ZTVN10__cxxabiv120__si_class_type_infoE = external global [0 x ptr]
 @_ZTSNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = linkonce_odr dso_local constant [59 x i8] c"NSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE\00", comdat, align 1
 @_ZTINSt6thread6_StateE = external constant ptr
+@_ZTINSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE = linkonce_odr dso_local constant { ptr, ptr, ptr } { ptr getelementptr inbounds (ptr, ptr @_ZTVN10__cxxabiv120__si_class_type_infoE, i64 2), ptr @_ZTSNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, ptr @_ZTINSt6thread6_StateE }, comdat, align 8
 
-; Function Attrs: mustprogress nofree norecurse nounwind willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable
+; Function Attrs: mustprogress nofree norecurse nounwind sspstrong willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable
 define dso_local void @_Z7writer1v() #0 {
   store atomic i32 1, ptr @x monotonic, align 4
   ret void
 }
 
-; Function Attrs: mustprogress nofree norecurse nounwind willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable
+; Function Attrs: mustprogress nofree norecurse nounwind sspstrong willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable
 define dso_local void @_Z7writer2v() #0 {
   store atomic i32 1, ptr @y monotonic, align 4
   ret void
 }
 
-; Function Attrs: mustprogress nofree norecurse nounwind willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable
+; Function Attrs: mustprogress nofree norecurse nounwind sspstrong willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable
 define dso_local void @_Z7reader1v() #0 {
   %1 = load atomic i32, ptr @x monotonic, align 4
   store i32 %1, ptr @r1, align 4, !tbaa !5
@@ -70,7 +70,7 @@ define dso_local void @_Z7reader1v() #0 {
   ret void
 }
 
-; Function Attrs: mustprogress nofree norecurse nounwind willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable
+; Function Attrs: mustprogress nofree norecurse nounwind sspstrong willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable
 define dso_local void @_Z7reader2v() #0 {
   %1 = load atomic i32, ptr @y monotonic, align 4
   store i32 %1, ptr @r3, align 4, !tbaa !5
@@ -79,7 +79,7 @@ define dso_local void @_Z7reader2v() #0 {
   ret void
 }
 
-; Function Attrs: mustprogress norecurse uwtable
+; Function Attrs: mustprogress norecurse sspstrong uwtable
 define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gxx_personality_v0 {
   %1 = alloca %"class.std::unique_ptr", align 8
   %2 = alloca %"class.std::unique_ptr", align 8
@@ -93,8 +93,8 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %4)
   store i64 0, ptr %5, align 8, !tbaa !9
   %9 = tail call noalias noundef nonnull dereferenceable(16) ptr @_Znwm(i64 noundef 16) #12
-  store ptr getelementptr inbounds nuw inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %9, align 8, !tbaa !12
-  %10 = getelementptr inbounds nuw i8, ptr %9, i64 8
+  store ptr getelementptr inbounds inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %9, align 8, !tbaa !12
+  %10 = getelementptr inbounds i8, ptr %9, i64 8
   store ptr @_Z7writer1v, ptr %10, align 8, !tbaa !14
   store ptr %9, ptr %4, align 8, !tbaa !17
   invoke void @_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE(ptr noundef nonnull align 8 dereferenceable(8) %5, ptr noundef nonnull %4, ptr noundef nonnull @_ZNSt6thread24_M_thread_deps_never_runEv)
@@ -107,7 +107,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 14:                                               ; preds = %11
   %15 = load ptr, ptr %12, align 8, !tbaa !12
-  %16 = getelementptr inbounds nuw i8, ptr %15, i64 8
+  %16 = getelementptr inbounds i8, ptr %15, i64 8
   %17 = load ptr, ptr %16, align 8
   call void %17(ptr noundef nonnull align 8 dereferenceable(8) %12) #11
   br label %28
@@ -121,7 +121,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 22:                                               ; preds = %18
   %23 = load ptr, ptr %20, align 8, !tbaa !12
-  %24 = getelementptr inbounds nuw i8, ptr %23, i64 8
+  %24 = getelementptr inbounds i8, ptr %23, i64 8
   %25 = load ptr, ptr %24, align 8
   call void %25(ptr noundef nonnull align 8 dereferenceable(8) %20) #11
   br label %26
@@ -139,8 +139,8 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
           to label %30 unwind label %128
 
 30:                                               ; preds = %28
-  store ptr getelementptr inbounds nuw inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %29, align 8, !tbaa !12
-  %31 = getelementptr inbounds nuw i8, ptr %29, i64 8
+  store ptr getelementptr inbounds inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %29, align 8, !tbaa !12
+  %31 = getelementptr inbounds i8, ptr %29, i64 8
   store ptr @_Z7writer2v, ptr %31, align 8, !tbaa !14
   store ptr %29, ptr %3, align 8, !tbaa !17
   invoke void @_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE(ptr noundef nonnull align 8 dereferenceable(8) %6, ptr noundef nonnull %3, ptr noundef nonnull @_ZNSt6thread24_M_thread_deps_never_runEv)
@@ -153,7 +153,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 35:                                               ; preds = %32
   %36 = load ptr, ptr %33, align 8, !tbaa !12
-  %37 = getelementptr inbounds nuw i8, ptr %36, i64 8
+  %37 = getelementptr inbounds i8, ptr %36, i64 8
   %38 = load ptr, ptr %37, align 8
   call void %38(ptr noundef nonnull align 8 dereferenceable(8) %33) #11
   br label %47
@@ -167,7 +167,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 43:                                               ; preds = %39
   %44 = load ptr, ptr %41, align 8, !tbaa !12
-  %45 = getelementptr inbounds nuw i8, ptr %44, i64 8
+  %45 = getelementptr inbounds i8, ptr %44, i64 8
   %46 = load ptr, ptr %45, align 8
   call void %46(ptr noundef nonnull align 8 dereferenceable(8) %41) #11
   br label %149
@@ -181,8 +181,8 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
           to label %49 unwind label %130
 
 49:                                               ; preds = %47
-  store ptr getelementptr inbounds nuw inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %48, align 8, !tbaa !12
-  %50 = getelementptr inbounds nuw i8, ptr %48, i64 8
+  store ptr getelementptr inbounds inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %48, align 8, !tbaa !12
+  %50 = getelementptr inbounds i8, ptr %48, i64 8
   store ptr @_Z7reader1v, ptr %50, align 8, !tbaa !14
   store ptr %48, ptr %2, align 8, !tbaa !17
   invoke void @_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE(ptr noundef nonnull align 8 dereferenceable(8) %7, ptr noundef nonnull %2, ptr noundef nonnull @_ZNSt6thread24_M_thread_deps_never_runEv)
@@ -195,7 +195,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 54:                                               ; preds = %51
   %55 = load ptr, ptr %52, align 8, !tbaa !12
-  %56 = getelementptr inbounds nuw i8, ptr %55, i64 8
+  %56 = getelementptr inbounds i8, ptr %55, i64 8
   %57 = load ptr, ptr %56, align 8
   call void %57(ptr noundef nonnull align 8 dereferenceable(8) %52) #11
   br label %66
@@ -209,7 +209,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 62:                                               ; preds = %58
   %63 = load ptr, ptr %60, align 8, !tbaa !12
-  %64 = getelementptr inbounds nuw i8, ptr %63, i64 8
+  %64 = getelementptr inbounds i8, ptr %63, i64 8
   %65 = load ptr, ptr %64, align 8
   call void %65(ptr noundef nonnull align 8 dereferenceable(8) %60) #11
   br label %144
@@ -223,8 +223,8 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
           to label %68 unwind label %132
 
 68:                                               ; preds = %66
-  store ptr getelementptr inbounds nuw inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %67, align 8, !tbaa !12
-  %69 = getelementptr inbounds nuw i8, ptr %67, i64 8
+  store ptr getelementptr inbounds inrange(-16, 24) (i8, ptr @_ZTVNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEEE, i64 16), ptr %67, align 8, !tbaa !12
+  %69 = getelementptr inbounds i8, ptr %67, i64 8
   store ptr @_Z7reader2v, ptr %69, align 8, !tbaa !14
   store ptr %67, ptr %1, align 8, !tbaa !17
   invoke void @_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE(ptr noundef nonnull align 8 dereferenceable(8) %8, ptr noundef nonnull %1, ptr noundef nonnull @_ZNSt6thread24_M_thread_deps_never_runEv)
@@ -237,7 +237,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 73:                                               ; preds = %70
   %74 = load ptr, ptr %71, align 8, !tbaa !12
-  %75 = getelementptr inbounds nuw i8, ptr %74, i64 8
+  %75 = getelementptr inbounds i8, ptr %74, i64 8
   %76 = load ptr, ptr %75, align 8
   call void %76(ptr noundef nonnull align 8 dereferenceable(8) %71) #11
   br label %85
@@ -251,7 +251,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 81:                                               ; preds = %77
   %82 = load ptr, ptr %79, align 8, !tbaa !12
-  %83 = getelementptr inbounds nuw i8, ptr %82, i64 8
+  %83 = getelementptr inbounds i8, ptr %82, i64 8
   %84 = load ptr, ptr %83, align 8
   call void %84(ptr noundef nonnull align 8 dereferenceable(8) %79) #11
   br label %139
@@ -314,7 +314,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
           to label %111 unwind label %134
 
 111:                                              ; preds = %109
-  %112 = load i64, ptr %8, align 8, !tbaa !19
+  %112 = load i64, ptr %8, align 8, !tbaa !18
   %113 = icmp eq i64 %112, 0
   br i1 %113, label %115, label %114
 
@@ -324,7 +324,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 115:                                              ; preds = %111
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %8) #11
-  %116 = load i64, ptr %7, align 8, !tbaa !19
+  %116 = load i64, ptr %7, align 8, !tbaa !18
   %117 = icmp eq i64 %116, 0
   br i1 %117, label %119, label %118
 
@@ -334,7 +334,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 119:                                              ; preds = %115
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %7) #11
-  %120 = load i64, ptr %6, align 8, !tbaa !19
+  %120 = load i64, ptr %6, align 8, !tbaa !18
   %121 = icmp eq i64 %120, 0
   br i1 %121, label %123, label %122
 
@@ -344,7 +344,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 
 123:                                              ; preds = %119
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %6) #11
-  %124 = load i64, ptr %5, align 8, !tbaa !19
+  %124 = load i64, ptr %5, align 8, !tbaa !18
   %125 = icmp eq i64 %124, 0
   br i1 %125, label %127, label %126
 
@@ -374,7 +374,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 134:                                              ; preds = %109, %104, %99, %94, %89, %106, %101, %96, %91, %88, %87, %86, %85
   %135 = landingpad { ptr, i32 }
           cleanup
-  %136 = load i64, ptr %8, align 8, !tbaa !19
+  %136 = load i64, ptr %8, align 8, !tbaa !18
   %137 = icmp eq i64 %136, 0
   br i1 %137, label %139, label %138
 
@@ -385,7 +385,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 139:                                              ; preds = %134, %132, %81, %77
   %140 = phi { ptr, i32 } [ %133, %132 ], [ %78, %81 ], [ %78, %77 ], [ %135, %134 ]
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %8) #11
-  %141 = load i64, ptr %7, align 8, !tbaa !19
+  %141 = load i64, ptr %7, align 8, !tbaa !18
   %142 = icmp eq i64 %141, 0
   br i1 %142, label %144, label %143
 
@@ -396,7 +396,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 144:                                              ; preds = %139, %130, %62, %58
   %145 = phi { ptr, i32 } [ %131, %130 ], [ %59, %62 ], [ %59, %58 ], [ %140, %139 ]
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %7) #11
-  %146 = load i64, ptr %6, align 8, !tbaa !19
+  %146 = load i64, ptr %6, align 8, !tbaa !18
   %147 = icmp eq i64 %146, 0
   br i1 %147, label %149, label %148
 
@@ -407,7 +407,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 149:                                              ; preds = %144, %128, %43, %39
   %150 = phi { ptr, i32 } [ %129, %128 ], [ %40, %43 ], [ %40, %39 ], [ %145, %144 ]
   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %6) #11
-  %151 = load i64, ptr %5, align 8, !tbaa !19
+  %151 = load i64, ptr %5, align 8, !tbaa !18
   %152 = icmp eq i64 %151, 0
   br i1 %152, label %154, label %153
 
@@ -421,7 +421,7 @@ define dso_local noundef i32 @main() local_unnamed_addr #1 personality ptr @__gx
 }
 
 ; Function Attrs: mustprogress nocallback nofree nosync nounwind willreturn memory(argmem: readwrite)
-declare void @llvm.lifetime.start.p0(i64 immarg, ptr captures(none)) #2
+declare void @llvm.lifetime.start.p0(i64 immarg, ptr nocapture) #2
 
 declare i32 @__gxx_personality_v0(...)
 
@@ -430,9 +430,9 @@ declare void @_ZNSt6thread4joinEv(ptr noundef nonnull align 8 dereferenceable(8)
 declare noundef nonnull align 8 dereferenceable(8) ptr @_ZNSolsEi(ptr noundef nonnull align 8 dereferenceable(8), i32 noundef) local_unnamed_addr #3
 
 ; Function Attrs: mustprogress nocallback nofree nosync nounwind willreturn memory(argmem: readwrite)
-declare void @llvm.lifetime.end.p0(i64 immarg, ptr captures(none)) #2
+declare void @llvm.lifetime.end.p0(i64 immarg, ptr nocapture) #2
 
-; Function Attrs: cold nofree noreturn nounwind
+; Function Attrs: cold noreturn nounwind
 declare void @_ZSt9terminatev() local_unnamed_addr #4
 
 declare void @_ZNSt6thread15_M_start_threadESt10unique_ptrINS_6_StateESt14default_deleteIS1_EEPFvvE(ptr noundef nonnull align 8 dereferenceable(8), ptr noundef, ptr noundef) local_unnamed_addr #3
@@ -443,7 +443,7 @@ declare noundef nonnull ptr @_Znwm(i64 noundef) local_unnamed_addr #5
 ; Function Attrs: nobuiltin nounwind
 declare void @_ZdlPvm(ptr noundef, i64 noundef) local_unnamed_addr #6
 
-; Function Attrs: mustprogress nounwind uwtable
+; Function Attrs: mustprogress nounwind sspstrong uwtable
 define linkonce_odr dso_local void @_ZNSt6thread24_M_thread_deps_never_runEv() #7 comdat align 2 {
   ret void
 }
@@ -451,34 +451,34 @@ define linkonce_odr dso_local void @_ZNSt6thread24_M_thread_deps_never_runEv() #
 ; Function Attrs: nounwind
 declare void @_ZNSt6thread6_StateD2Ev(ptr noundef nonnull align 8 dereferenceable(8)) unnamed_addr #8
 
-; Function Attrs: inlinehint mustprogress nounwind uwtable
+; Function Attrs: inlinehint mustprogress nounwind sspstrong uwtable
 define linkonce_odr dso_local void @_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEED0Ev(ptr noundef nonnull align 8 dereferenceable(16) %0) unnamed_addr #9 comdat align 2 {
   tail call void @_ZNSt6thread6_StateD2Ev(ptr noundef nonnull align 8 dereferenceable(16) %0) #11
   tail call void @_ZdlPvm(ptr noundef nonnull %0, i64 noundef 16) #14
   ret void
 }
 
-; Function Attrs: mustprogress uwtable
+; Function Attrs: mustprogress sspstrong uwtable
 define linkonce_odr dso_local void @_ZNSt6thread11_State_implINS_8_InvokerISt5tupleIJPFvvEEEEEE6_M_runEv(ptr noundef nonnull align 8 dereferenceable(16) %0) unnamed_addr #10 comdat align 2 {
-  %2 = getelementptr inbounds nuw i8, ptr %0, i64 8
-  %3 = load ptr, ptr %2, align 8, !tbaa !20
+  %2 = getelementptr inbounds i8, ptr %0, i64 8
+  %3 = load ptr, ptr %2, align 8, !tbaa !17
   tail call void %3()
   ret void
 }
 
 declare noundef nonnull align 8 dereferenceable(8) ptr @_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l(ptr noundef nonnull align 8 dereferenceable(8), ptr noundef, i64 noundef) local_unnamed_addr #3
 
-attributes #0 = { mustprogress nofree norecurse nounwind willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #1 = { mustprogress norecurse uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #0 = { mustprogress nofree norecurse nounwind sspstrong willreturn memory(readwrite, argmem: none, inaccessiblemem: none) uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #1 = { mustprogress norecurse sspstrong uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #2 = { mustprogress nocallback nofree nosync nounwind willreturn memory(argmem: readwrite) }
 attributes #3 = { "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #4 = { cold nofree noreturn nounwind "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #4 = { cold noreturn nounwind "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #5 = { nobuiltin allocsize(0) "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #6 = { nobuiltin nounwind "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #7 = { mustprogress nounwind uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #7 = { mustprogress nounwind sspstrong uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #8 = { nounwind "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #9 = { inlinehint mustprogress nounwind uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #10 = { mustprogress uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #9 = { inlinehint mustprogress nounwind sspstrong uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #10 = { mustprogress sspstrong uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #11 = { nounwind }
 attributes #12 = { builtin allocsize(0) }
 attributes #13 = { cold noreturn nounwind }
@@ -491,7 +491,7 @@ attributes #14 = { builtin nounwind }
 !1 = !{i32 8, !"PIC Level", i32 2}
 !2 = !{i32 7, !"PIE Level", i32 2}
 !3 = !{i32 7, !"uwtable", i32 2}
-!4 = !{!"clang version 21.0.0git (git@git.yigit.run:yigit/cs4560_fencing.git 680a64b316104708091a6c6bbe201c4f88415db6)"}
+!4 = !{!"clang version 19.1.7"}
 !5 = !{!6, !6, i64 0}
 !6 = !{!"int", !7, i64 0}
 !7 = !{!"omnipotent char", !8, i64 0}
@@ -504,7 +504,5 @@ attributes #14 = { builtin nounwind }
 !14 = !{!15, !16, i64 0}
 !15 = !{!"_ZTSSt10_Head_baseILm0EPFvvELb0EE", !16, i64 0}
 !16 = !{!"any pointer", !7, i64 0}
-!17 = !{!18, !18, i64 0}
-!18 = !{!"p1 _ZTSNSt6thread6_StateE", !16, i64 0}
-!19 = !{!11, !11, i64 0}
-!20 = !{!16, !16, i64 0}
+!17 = !{!16, !16, i64 0}
+!18 = !{!11, !11, i64 0}

@@ -1,6 +1,5 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -20,55 +19,139 @@
 using namespace llvm;
 
 namespace {
-struct FenceOptimization : PassInfoMixin<FenceOptimization> {
-  AtomicOrdering getOrdering(Instruction *inst) {
 
-    if (isa<LoadInst>(inst)) {
-      return cast<LoadInst>(&inst)->getOrdering();
-    } else if (isa<StoreInst>(inst)) {
-      return cast<StoreInst>(&inst)->getOrdering();
-    } else if (isa<FenceInst>(inst)) {
-      return cast<FenceInst>(&inst)->getOrdering();
-    }
-    return AtomicOrdering::NotAtomic;
+AtomicOrdering getOrdering(Instruction *inst) {
+  if (isa<LoadInst>(inst)) {
+    return cast<LoadInst>(inst)->getOrdering();
+  } else if (isa<StoreInst>(inst)) {
+    return cast<StoreInst>(inst)->getOrdering();
+  } else if (isa<FenceInst>(inst)) {
+    return cast<FenceInst>(inst)->getOrdering();
+  }
+  return AtomicOrdering::NotAtomic;
+}
+
+class Node {
+public:
+  BasicBlock *BB;
+  Instruction *lastMemOp = nullptr;
+  AtomicOrdering order = AtomicOrdering::NotAtomic;
+  int name = 0;
+  // Tells you if the node is after the last memory operation, place a fence
+  // accordingly
+  bool after = false;
+  std::vector<Node *> successors;
+  std::vector<Node *> predecessors;
+  Node(BasicBlock *bb) : BB(bb), name(0) {} // Can I have default constructor?
+  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order)
+      : BB(bb), lastMemOp(lastMemOp), order(order), name(0) {}
+  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order, bool after)
+      : BB(bb), lastMemOp(lastMemOp), order(order), after(after), name(0) {}
+
+  Node getNodeAfter(Instruction *inst) {
+    Node node = Node(inst->getParent(), inst, getOrdering(inst), true);
+    return node;
   }
 
-  class Node {
-  public:
-    BasicBlock *BB;
-    Instruction *lastMemOp = nullptr;
-    AtomicOrdering order = AtomicOrdering::NotAtomic;
-    int name = 0;
-    // Tells you if the node is after the last memory operation, place a fence
-    // accordingly
-    bool after = false;
-    std::vector<Node *> successors;
-    std::vector<Node *> predecessors;
-    Node(BasicBlock *bb) : BB(bb), name(0) {} // Can I have default constructor?
-    Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order)
-        : BB(bb), lastMemOp(lastMemOp), order(order), name(0) {}
-    Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order,
-         bool after)
-        : BB(bb), lastMemOp(lastMemOp), order(order), after(after), name(0) {}
+  Node getNodeBefore(Instruction *inst) {
+    Node node = Node(inst->getParent(), inst, getOrdering(inst), false);
+    return node;
+  }
 
-    Node getNodeAfter(Instruction *inst) {
-      Node node = Node(inst->getParent(), inst, getOrdering(inst), true);
-      return node;
+  bool operator==(const Node &other) const {
+    return BB == other.BB && lastMemOp == other.lastMemOp &&
+           order == other.order && after == other.after && name == other.name;
+  }
+
+  bool operator!=(const Node &other) const { return !(*this == other); }
+};
+
+struct Edge {
+  uint64_t src;
+  uint64_t dst;
+
+  uint32_t capacity;
+  bool residual;
+
+  Edge *reverse;
+};
+
+using AList_t = std::map<uint64_t, std::vector<Edge>>;
+
+struct Graph {
+  Node *source;
+  Node *sink;
+
+  std::vector<Node *> nodes;
+  std::vector<std::pair<uint64_t, uint64_t>> edges;
+
+  void addNode(Node *node) {
+    for (auto existingNode : nodes) {
+      if (*existingNode == *node) {
+        return;
+      }
+    }
+    nodes.push_back(node);
+  }
+
+  Node *getNode(uint64_t idx) {
+    if (idx >= nodes.size())
+      return nullptr;
+
+    auto &node = nodes[idx];
+    return node;
+  }
+
+  void addEdge(Node *from, Node *to) {
+    int fromIndex = -1;
+    int toIndex = -1;
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      if (*nodes[i] == *from) {
+        fromIndex = i;
+      }
+      if (*nodes[i] == *to) {
+        toIndex = i;
+      }
     }
 
-    Node getNodeBefore(Instruction *inst) {
-      Node node = Node(inst->getParent(), inst, getOrdering(inst), false);
-      return node;
+    if (fromIndex == -1 || toIndex == -1) {
+      llvm::errs() << "Error: Node not found in graph.\n";
+      return;
     }
 
-    bool operator==(const Node &other) const {
-      return BB == other.BB && lastMemOp == other.lastMemOp &&
-             order == other.order && after == other.after && name == other.name;
+    // Check if the edge already exists
+    for (const auto &edge : edges) {
+      if (edge.first == fromIndex && edge.second == toIndex) {
+        return; // Edge already exists
+      }
+    }
+    edges.push_back(std::make_pair(fromIndex, toIndex));
+  }
+
+  AList_t buildAdjacencyList(uint32_t Capacity) {
+    AList_t AdjacencyList;
+
+    for (auto &[u, v] : edges) {
+      uint32_t c;
+      if (u == 0 || v == 1) // Sink or source edges
+        c = 0xFFFFFFFF;
+      else
+        c = Capacity;
+
+      auto e = Edge{u, v, c, false, nullptr};
+      auto re = Edge{v, u, 0, true, &e};
+      e.reverse = &re;
+
+      AdjacencyList[u].push_back(e);
+      AdjacencyList[v].push_back(re);
     }
 
-    bool operator!=(const Node &other) const { return !(*this == other); }
-  };
+    return AdjacencyList;
+  }
+};
 
+struct FenceOptimization : PassInfoMixin<FenceOptimization> {
   Node getNodeAtBeginning(BasicBlock *bb) {
     Instruction *firstInst = &*bb->begin();
     Node node = Node(bb, firstInst, getOrdering(firstInst), false);
@@ -92,91 +175,6 @@ struct FenceOptimization : PassInfoMixin<FenceOptimization> {
     Instruction *firstInst = &*bb->begin();
     return firstInst;
   }
-
-  struct Edge {
-    uint64_t src;
-    uint64_t dst;
-
-    uint32_t capacity;
-    bool residual;
-
-    Edge *reverse;
-  };
-
-  using AList_t = std::map<uint64_t, std::vector<Edge>>;
-
-  struct Graph {
-    Node *source;
-    Node *sink;
-
-    std::vector<Node *> nodes;
-    std::vector<std::pair<uint64_t, uint64_t>> edges;
-
-    void addNode(Node *node) {
-      for (auto existingNode : nodes) {
-        if (*existingNode == *node) {
-          return;
-        }
-      }
-      nodes.push_back(node);
-    }
-
-    Node *getNode(uint64_t idx) {
-      if (idx >= nodes.size())
-        return nullptr;
-
-      auto &node = nodes[idx];
-      return node;
-    }
-
-    void addEdge(Node *from, Node *to) {
-      int fromIndex = -1;
-      int toIndex = -1;
-
-      for (size_t i = 0; i < nodes.size(); ++i) {
-        if (*nodes[i] == *from) {
-          fromIndex = i;
-        }
-        if (*nodes[i] == *to) {
-          toIndex = i;
-        }
-      }
-
-      if (fromIndex == -1 || toIndex == -1) {
-        llvm::errs() << "Error: Node not found in graph.\n";
-        return;
-      }
-
-      // Check if the edge already exists
-      for (const auto &edge : edges) {
-        if (edge.first == fromIndex && edge.second == toIndex) {
-          return; // Edge already exists
-        }
-      }
-      edges.push_back(std::make_pair(fromIndex, toIndex));
-    }
-
-    AList_t buildAdjacencyList(uint32_t Capacity) {
-      AList_t AdjacencyList;
-
-      for (auto &[u, v] : edges) {
-        uint32_t c;
-        if (u == 0 || v == 1) // Sink or source edges
-          c = 0xFFFFFFFF;
-        else
-          c = Capacity;
-
-        auto e = Edge{u, v, c, false, nullptr};
-        auto re = Edge{v, u, 0, true, &e};
-        e.reverse = &re;
-
-        AdjacencyList[u].push_back(e);
-        AdjacencyList[v].push_back(re);
-      }
-
-      return AdjacencyList;
-    }
-  };
 
   void augment(std::vector<Edge> Path) {
     uint32_t bottleneck = 0xFFFFFFFF;
@@ -511,7 +509,7 @@ struct FenceOptimization : PassInfoMixin<FenceOptimization> {
 } // namespace
 
 /* New PM Registration */
-llvm::PassPluginLibraryInfo getPassPluginInfo() {
+llvm::PassPluginLibraryInfo getFenceOptPassPluginInfo() {
   return {LLVM_PLUGIN_API_VERSION, "Fence Optimization", LLVM_VERSION_STRING,
           [](PassBuilder &PB) {
             // PB.registerVectorizerStartEPCallback(
@@ -533,6 +531,6 @@ llvm::PassPluginLibraryInfo getPassPluginInfo() {
 #ifndef LLVM_BYE_LINK_INTO_TOOLS
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo() {
-  return getPassPluginInfo();
+  return getFenceOptPassPluginInfo();
 }
 #endif

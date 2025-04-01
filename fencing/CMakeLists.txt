@@ -1,5 +1,4 @@
-add_llvm_pass_plugin(SkeletonPass
-    Skeleton.cpp
+add_llvm_pass_plugin(FencingPass
     FenceTSO.cpp
     FencePSO.cpp
     FenceOptimization.cpp

@@ -1,4 +1,4 @@
-CXX = ../build/bin/clang++
+CXX = clang++
 SRC = $(wildcard *.cpp)
 LLVM_IR = $(SRC:.cpp=.ll)
 BITCODE = $(SRC:.cpp=.bc)

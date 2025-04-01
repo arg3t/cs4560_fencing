@@ -179,7 +179,7 @@ struct FencePSO : PassInfoMixin<FencePSO> {
 } // namespace
 
 /* New PM Registration */
-llvm::PassPluginLibraryInfo getPassPluginInfo() {
+llvm::PassPluginLibraryInfo getFencePSOPassInfo() {
   return {LLVM_PLUGIN_API_VERSION, "Fence PSO", LLVM_VERSION_STRING,
           [](PassBuilder &PB) {
             // PB.registerVectorizerStartEPCallback(
@@ -201,6 +201,6 @@ llvm::PassPluginLibraryInfo getPassPluginInfo() {
 #ifndef LLVM_BYE_LINK_INTO_TOOLS
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo
 llvmGetPassPluginInfo() {
-  return getPassPluginInfo();
+  return getFencePSOPassInfo();
 }
 #endif
