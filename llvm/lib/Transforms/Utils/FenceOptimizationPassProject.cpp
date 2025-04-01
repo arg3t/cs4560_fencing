@@ -14,7 +14,11 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <cstdint>
+#include <map>
+#include <set>
 #include <string>
+#include <vector>
 
 using namespace llvm;
 
@@ -143,7 +147,7 @@ class Node {
   BasicBlock *BB;
   Instruction *lastMemOp = nullptr;
   AtomicOrdering order = AtomicOrdering::NotAtomic;
-  int name = 0; 
+  int name = 0;
   // Tells you if the node is after the last memory operation, place a fence accordingly
   bool after = false;
   std::vector<Node *> successors;
@@ -201,6 +205,16 @@ Instruction* getFirstInst(BasicBlock *bb) {
   return firstInst;
 }
 
+struct Edge {
+  uint64_t src;
+  uint64_t dst;
+
+  uint32_t capacity;
+  bool residual;
+
+  Edge* reverse;
+};
+
 
 struct Graph {
   Node *source;
@@ -244,7 +258,74 @@ struct Graph {
     }
     edges.push_back(std::make_pair(fromIndex, toIndex));
   }
+
+  std::map<uint64_t, std::vector<Edge>> buildAdjacencyList(uint32_t Capacity){
+    std::map<uint64_t, std::vector<Edge>> AdjacencyList;
+
+    for (auto &[u,v] : edges){
+      uint32_t c;
+      if(u == 0 || v == 1) // Sink or source edges
+        c = 0xFFFFFFFF;
+      else
+        c = Capacity;
+
+      auto e = Edge{u, v, c, false, nullptr};
+      auto re = Edge{v,u, 0, true, e};
+      e.reverse = re;
+
+      AdjacencyList[u].push_back(e);
+      AdjacencyList[v].push_back(re);
+    }
+
+    return AdjacencyList;
+  }
 };
+
+void augment(std::vector<Edge> Path){
+  uint32_t bottleneck = 0xFFFFFFFF;
+
+  for(auto &E : Path){
+    bottleneck = std::min(E.capacity, bottleneck);
+  }
+
+  for(auto &E : Path){
+    E.capacity -= bottleneck;
+    E.reverse->capacity -= bottleneck;
+  }
+}
+
+std::vector<Edge> FindPath(
+    uint64_t Node,
+    uint64_t Target,
+    std::map<uint64_t, std::vector<Edge>> AdjacencyList,
+    std::set<uint64_t> Visited
+    ) {
+  Visited.insert(Node);
+
+  for(auto &E : AdjacencyList[Node]){
+    if(Visited.find(E.dst) != Visited.end())
+      continue;
+
+    if(E.capacity == 0)
+      continue;
+
+    if(E.dst == Target)
+      return std::vector<Edge>{E};
+
+    auto Path = FindPath(E.dst, Target, AdjacencyList, Visited);
+    if (Path.size() > 0){
+      Path.insert(Path.begin(), E);
+      return Path;
+    }
+  }
+
+  return std::vector<Edge>{};
+}
+
+std::vector<Edge> FindPath(std::map<uint64_t, std::vector<Edge>> AdjacencyList){
+  return FindPath(0, 1, AdjacencyList, std::set<uint64_t>{});
+}
+
 
 
 Node makeGraphUpwards(Instruction *root, Graph &graph) {
