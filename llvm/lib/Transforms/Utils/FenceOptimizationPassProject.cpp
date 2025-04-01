@@ -138,21 +138,21 @@ AtomicOrdering getOrdering(Instruction *inst) {
   return AtomicOrdering::NotAtomic;
 }
 
-struct Node {
+class Node {
+  public:
   BasicBlock *BB;
   Instruction *lastMemOp = nullptr;
   AtomicOrdering order = AtomicOrdering::NotAtomic;
-  string name = "";
+  int name = 0; 
   // Tells you if the node is after the last memory operation, place a fence accordingly
   bool after = false;
   std::vector<Node *> successors;
   std::vector<Node *> predecessors;
-
-  Node(BasicBlock *bb) : BB(bb) {} // Can I have default constructor?
+  Node(BasicBlock *bb) : BB(bb), name(0) {} // Can I have default constructor?
   Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order)
-      : BB(bb), lastMemOp(lastMemOp), order(order) {}
+      : BB(bb), lastMemOp(lastMemOp), order(order), name(0) {}
   Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order, bool after)
-      : BB(bb), lastMemOp(lastMemOp), order(order), after(after) {}
+      : BB(bb), lastMemOp(lastMemOp), order(order), after(after), name(0) {}
 
   Node getNodeAfter(Instruction *inst) {
     Node node = Node(inst->getParent(), inst, getOrdering(inst), true);
@@ -377,7 +377,7 @@ void printGraph(const Graph &graph) {
     Node *node = graph.nodes[i];
     llvm::errs() << "  Node " << i << ": "
                   << "  Name: " << node->name
-                  << "  Node in BB: " << node->BB->getNumber()
+                  // << "  Node in BB: " << node->BB->getNumber()
                   << ", LastMemOp: "
                   << (node->lastMemOp ? node->lastMemOp->getOpcodeName() : "None");
               if(node -> lastMemOp != nullptr)
@@ -432,9 +432,9 @@ PreservedAnalyses FenceOptimizationPassProject::run(Module &M,
       continue;
     }
     Node source = Node(&F.getEntryBlock());
-    source.name = "source";
+    source.name = 1;
     Node sink = Node(&F.getEntryBlock());
-    sink.name = "sink";
+    sink.name = 2;
     Graph graph = Graph();
     graph.source = &source;
     graph.sink = &sink;
