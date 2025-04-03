@@ -141,6 +141,11 @@ void TraverseBBGraphPSO(BasicBlock &BB, AtomicOrdering order,
           BasicBlock *Successor = BI->getSuccessor(i);
           llvm::errs() << "      Traversing successor Basic Block: "
                        << Successor->getName() << "\n";
+
+          if (Successor == &BB) {
+            llvm::errs() << "      Skipping self-loop.\n";
+            continue;
+          }
           TraverseBBGraphPSO(*Successor, order, lastMemOp);
         }
       } else if (auto *SI = dyn_cast<SwitchInst>(&I)) {
@@ -150,6 +155,10 @@ void TraverseBBGraphPSO(BasicBlock &BB, AtomicOrdering order,
           BasicBlock *Successor = SI->getSuccessor(i);
           llvm::errs() << "      Traversing successor Basic Block: "
                        << Successor->getName() << "\n";
+          if (Successor == &BB) {
+            llvm::errs() << "      Skipping self-loop.\n";
+            continue;
+          }
           TraverseBBGraphPSO(*Successor, order, lastMemOp);
         }
       } // TODO Might need to handle calls here as well

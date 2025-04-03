@@ -129,6 +129,10 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
           BasicBlock *Successor = BI->getSuccessor(i);
           llvm::errs() << "      Traversing successor Basic Block: "
                        << Successor->getName() << "\n";
+          if (Successor == &BB) {
+            llvm::errs() << "      Skipping self-loop.\n";
+            continue;
+          }
           TraverseBBGraph(*Successor, order, lastMemOp);
         }
       } else if (auto *SI = dyn_cast<SwitchInst>(&I)) {
@@ -140,7 +144,11 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
                        << Successor->getName() << "\n";
           TraverseBBGraph(*Successor, order, lastMemOp);
         }
-      } // TODO Might need to handle calls here as well
+      } // TODO Might need to handle calls here as well 
+      else {
+        llvm::errs() << "    Encountered unsupported terminator instruction.\n";
+        return;
+      }
     }
   }
 }
