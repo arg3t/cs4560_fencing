@@ -35,7 +35,8 @@ AtomicOrdering getOrdering(Instruction *inst) {
 class Node {
 public:
   BasicBlock *BB;
-  Instruction *lastMemOp = nullptr;
+  // Instruction *lastMemOp = nullptr;
+  WeakTrackingVH lastMemOp = NULL;
   AtomicOrdering order = AtomicOrdering::NotAtomic;
   int name = 0;
   // Tells you if the node is after the last memory operation, place a fence
@@ -44,23 +45,33 @@ public:
   std::vector<Node *> successors;
   std::vector<Node *> predecessors;
   Node(BasicBlock *bb) : BB(bb), name(0) {} // Can I have default constructor?
-  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order)
+  Node(BasicBlock *bb, WeakTrackingVH lastMemOp, AtomicOrdering order)
       : BB(bb), lastMemOp(lastMemOp), order(order), name(0) {}
-  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order, bool after)
+  Node(BasicBlock *bb, WeakTrackingVH lastMemOp, AtomicOrdering order, bool after)
       : BB(bb), lastMemOp(lastMemOp), order(order), after(after), name(0) {}
 
+  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order, bool after){
+    this->BB = bb;
+    this->lastMemOp = WeakTrackingVH(lastMemOp);
+    this->order = order;
+    this->after = after;
+    this->name = 0;
+  }
+
   Node getNodeAfter(Instruction *inst) {
-    Node node = Node(inst->getParent(), inst, getOrdering(inst), true);
+    auto track = WeakTrackingVH(inst);
+    Node node = Node(inst->getParent(), track, getOrdering(inst), true);
     return node;
   }
 
   Node getNodeBefore(Instruction *inst) {
-    Node node = Node(inst->getParent(), inst, getOrdering(inst), false);
+    auto track = WeakTrackingVH(inst);
+    Node node = Node(inst->getParent(), track, getOrdering(inst), false);
     return node;
   }
 
   bool operator==(const Node &other) const {
-    return BB == other.BB && lastMemOp == other.lastMemOp &&
+    return BB == other.BB && &lastMemOp == &other.lastMemOp &&
            order == other.order && after == other.after && name == other.name;
   }
 
@@ -440,14 +451,14 @@ std::string atomicOrderingToString(llvm::AtomicOrdering order) {
   }
 }
 
-void printGraph(const Graph &graph) {
+void printGraph(Graph &graph) {
   llvm::errs() << "Graph Nodes:\n";
   for (int i = 0; i < graph.nodes.size(); ++i) {
     Node *node = graph.nodes[i];
     llvm::errs() << "  Node " << i << ": "
                  << "  Name: " << node->name;
     // << "  Node in BB: " << node->BB->getNumber()
-    if(node -> lastMemOp != nullptr)
+    if(node -> lastMemOp != NULL)
     llvm::errs() << ", Instruction: " << *(node->lastMemOp);
     else
     llvm::errs() << "Instruction: " << "NOP";
@@ -466,11 +477,16 @@ void printGraph(const Graph &graph) {
 // upward and downward graphs, and connects them. Finally, it prints the
 // resulting graph.
 void TransformFunction(Function *fun, Graph &graph) {
+
+  llvm::errs() << "\n\n\n------------------\nTransforming function: " << fun->getName() << "\n";
+
+
   // Iterate over each basic block in the function.
   for (auto &bb : *fun) {
+    // llvm::errs() << "Basic Block: " << bb.getNumber() << "\n";
     // Iterate over each instruction in the basic block.
     for (auto &inst : bb) {
-      llvm::errs() << inst;
+      llvm::errs() <<" :::::::::Inst: "<< inst<< "\n";
       // Check if the instruction is a fence.
       if (isa<FenceInst>(&inst)) {
         // For the fence instruction, build the upward and downward graphs.
@@ -482,15 +498,31 @@ void TransformFunction(Function *fun, Graph &graph) {
           graph.addNode(nodeAfterFence);
           graph.addEdge(nodeBeforeFence, nodeAfterFence);
         }
-
-        // Remove the fence
-        inst.eraseFromParent();
-        llvm::errs() << "Removed fence instruction: " << inst;
       }
     }
   }
 
+
+
   // Finally, print the graph.
+  printGraph(graph);
+
+  for (auto bbIter = fun->begin(), bbEnd = fun->end(); bbIter != bbEnd; ++bbIter) {
+    BasicBlock &bb = *bbIter;
+    for (auto instIter = bb.begin(), instEnd = bb.end(); instIter != instEnd; ) {
+      Instruction &inst = *instIter;
+      // Advance the iterator before removal if needed.
+      ++instIter;
+      
+      if (isa<FenceInst>(&inst)) {
+        llvm::errs() << "\nRemoved fence instruction: " << inst << "\n";
+        inst.eraseFromParent();
+        llvm::errs() << "After removing fence instruction.\n";
+      }
+    }
+  }
+
+  // Print the graph after removing the fence instruction.
   printGraph(graph);
 }
 
@@ -543,6 +575,17 @@ PreservedAnalyses FenceOptimization::run(Module &M, ModuleAnalysisManager &AM) {
       assert(src != nullptr);
       assert(dst != nullptr);
 
+      LLVMContext &context = src->BB->getContext();
+      FenceInst *newFence = new FenceInst(src->BB->getContext(),AtomicOrdering::SequentiallyConsistent);
+
+      Instruction *lastInst = dyn_cast<Instruction>(src->lastMemOp);
+      if(src->after) {
+        llvm::errs() << "Inserting fence after instruction: " << *lastInst << "\n";
+        newFence->insertAfter(lastInst);
+      } else {
+        llvm::errs() << "Inserting fence before instruction: " << *lastInst << "\n";
+        newFence->insertBefore(lastInst);
+      }
       // TODO: Test
     }
   }
