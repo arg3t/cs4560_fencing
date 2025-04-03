@@ -78,3 +78,12 @@ pythonenv*
 # Mihnea's stuff
 */CPackConfig.cmake
 */CPackSourceConfig.cmake
+
+*/build/
+
+*/CMakeFiles/
+*/CMakeCache.txt
+*/CMakeOutput.log
+*/CMakeError.log
+/*/*/CMakeFiles/
+# CMake generated files
