@@ -169,17 +169,17 @@ struct Graph {
   }
 };
 
-Node getNodeAtBeginning(BasicBlock *bb) {
+Node *getNodeAtBeginning(BasicBlock *bb) {
   Instruction *firstInst = &*bb->begin();
-  Node node = Node(bb, firstInst, getOrdering(firstInst), false);
-  node.after = false;
+  Node *node = new Node(bb, firstInst, getOrdering(firstInst), false);
+  node->after = false;
   return node;
 }
 
-Node getNodeAtEnd(BasicBlock *bb) {
+Node *getNodeAtEnd(BasicBlock *bb) {
   Instruction *lastInst = &*bb->rbegin();
-  Node node = Node(bb, lastInst, getOrdering(lastInst), true);
-  node.after = true;
+  Node *node = new Node(bb, lastInst, getOrdering(lastInst), true);
+  node->after = true;
   return node;
 }
 
@@ -302,64 +302,12 @@ std::vector<Edge*> MinCut(AList_t AdjacencyList) {
   return MinCutEdges;
 }
 
-Node makeGraphUpwards(Instruction *root, Graph &graph) {
-  BasicBlock *bb = root->getParent();
-
-  // for inst an instruction before root, going upwards
-
-  bool found_root = false;
-  // Reverse iterator to traverse the basic block in reverse order
-  for (auto it = bb->rbegin(); it != bb->rend(); ++it) {
-    Instruction *inst = &*it;
-    if (inst == root) {
-      found_root = true;
-      continue;
-    }
-    if (!found_root) {
-      continue;
-    }
-
-    // If inst is a memory access, then node is getNodeAfter(inst),
-    // connectSource(node)
-    if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
-      auto node = Node(inst->getParent(), inst, getOrdering(inst), true);
-      graph.addNode(&node);
-      graph.addEdge(graph.source, &node);
-      return node;
-    }
-  }
-
-  Node node = getNodeAtBeginning(bb);
-  graph.addNode(&node);
-  BasicBlock &first_bb_in_func = bb->getParent()->getEntryBlock();
-  if (bb == &first_bb_in_func) {
-    graph.addEdge(graph.source, &node);
-    return node;
-  }
-
-  // iterate over all predecessors of bb
-  for (auto pred : predecessors(bb)) {
-    Node node2 = getNodeAtEnd(pred);
-    Instruction *inst2 = getLastInst(pred);
-
-    Node node3 = makeGraphUpwards(inst2, graph);
-    if (node3 != NULL) {
-      graph.addEdge(&node3, &node2);
-      graph.addEdge(&node2, &node);
-      return node;
-    }
-  }
-  return NULL; // Do I return NULL here?
-  // paper is vague about this
-}
-
-Node makeGraphDownwards(Instruction *root, Graph &graph) {
-  // Get the basic block of the root instruction.
-  BasicBlock *bb = root->getParent();
-
-  // Traverse the instructions in 'bb' starting after 'root'
+Node* makeGraphUpwards(Instruction *root, Graph &graph) {
+  //basicBlock ←GetBasicBlock(root)
+  auto *bb = root->getParent();
+  // for inst an instruction before root in basicBlock, going upwards do
   bool foundRoot = false;
-  for (auto it = bb->begin(); it != bb->end(); ++it) {
+  for (auto it = bb -> rbegin(); it != bb -> rend(); it++) {
     Instruction *inst = &*it;
     if (inst == root) {
       foundRoot = true;
@@ -368,46 +316,105 @@ Node makeGraphDownwards(Instruction *root, Graph &graph) {
     if (!foundRoot)
       continue;
 
-    // Check if the instruction is a memory access or a return.
-    if (isa<LoadInst>(inst) || isa<StoreInst>(inst) || isa<ReturnInst>(inst)) {
-      // Create a node *before* the instruction.
-      // Node *node = new Node(getNodeBefore(inst));
-      Node *node = new Node(inst->getParent(), inst, getOrdering(inst), false);
+    // if inst a memory access then
+    if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
+      // node ←GetNodeAfter(inst)
+      llvm::errs() << "\nFound memory access: " << *inst << "\n";
+      Node *node = new Node(inst->getParent(), inst, getOrdering(inst), true);
+
       graph.addNode(node);
-      // Connect this node to the sink.
-      graph.addEdge(node, graph.sink);
-      return *node;
+      // connect node to source
+      graph.addEdge(graph.source, node);
+      return node;
     }
   }
 
-  // No memory access or return instruction was found in the current block.
-  // Get the node at the end of the basic block.
-  Node *node = new Node(getNodeAtEnd(bb));
-  graph.addNode(node);
+  Node *node = getNodeAtBeginning(bb);
+  // if basic block is first in function
+  if (bb == &bb->getParent()->getEntryBlock()) {
+    graph.addNode(node);
+    graph.addEdge(graph.source, node);
+    return node;
+  }
 
-  // For every successor basic block of the current basic block...
-  for (BasicBlock *succ : successors(bb)) {
-    // Create a node at the beginning of the successor block.
-    Node *node2 = new Node(getNodeAtBeginning(succ));
+  // else connect node to the previous basic block
+  for (BasicBlock *pred : predecessors(bb)) {
+    Node *node2 = getNodeAtEnd(pred);
     graph.addNode(node2);
-    // Get the first instruction in the successor basic block.
-    Instruction *inst2 = getFirstInst(succ);
-    // Recursively build the downward graph starting at inst2.
-    Node node3 = makeGraphDownwards(inst2, graph);
-    if (node3 != NULL) {
+    auto *lastInst = getLastInst(pred);
+    llvm::errs() << "Last instruction in predecessor: " << *lastInst << "\n";
+
+    // Recursively build the upward graph starting at lastInst.
+    Node *node3 = makeGraphUpwards(lastInst, graph);
+
+    if (node3 != nullptr) {
+      // Connect the nodes:
+      // 1. Connect the current block's beginning node to the predecessor's end
+      // node.
+      graph.addEdge(node, node2);
+      // 2. Connect the predecessor end node to the node returned by recursion.
+      graph.addNode(node3);
+      graph.addEdge(node2, node3);
+      return node;
+    }
+  }
+  llvm::errs() << "\n\n\nNo memory access found in the upward graph.\n\n\n";
+  return nullptr;
+
+}
+
+
+Node* makeGraphDownwards(Instruction *root, Graph &graph) {
+  // Get the basic block of the root instruction.
+  BasicBlock *bb = root->getParent();
+
+  // Iterate over the instructions in the basic block, going downwards.
+  bool foundRoot = false;
+  for(auto it = bb->begin(); it != bb->end(); it++) {
+    Instruction *inst = &*it;
+    if (inst == root) {
+      foundRoot = true;
+      continue;
+    }
+    if (!foundRoot)
+      continue;
+
+    // If inst is a memory access, create a node.
+    if (isa<LoadInst>(inst) || isa<StoreInst>(inst) || isa<ReturnInst>(inst)) {
+      llvm::errs() << "Found memory access or return: " << *inst << "\n";
+      Node *node = new Node(inst->getParent(), inst, getOrdering(inst), false);
+      graph.addNode(node);
+      // Connect the node to the sink.
+      graph.addEdge(node, graph.sink);
+      return node;
+    }
+  }
+
+  Node *node = getNodeAtEnd(bb);
+
+  for (BasicBlock *succ : successors(bb)) {
+    Node *node2 = getNodeAtBeginning(succ);
+    graph.addNode(node2);
+    auto *firstInst = getFirstInst(succ);
+    llvm::errs() << "First instruction in successor: " << *firstInst << "\n";
+    // Recursively build the downward graph starting at firstInst.
+    Node *node3 = makeGraphDownwards(firstInst, graph);
+
+    if (node3 != nullptr) {
       // Connect the nodes:
       // 1. Connect the current block's end node to the successor's beginning
       // node.
       graph.addEdge(node, node2);
       // 2. Connect the successor beginning node to the node returned by
       // recursion.
-      graph.addEdge(node2, &node3);
-      return *node;
+      graph.addNode(node3);
+      graph.addEdge(node2, node3);
+      return node;
     }
   }
 
   // If none of the successor branches return a node, return nullptr.
-  return NULL;
+  return nullptr;
 }
 
 // #include "llvm/IR/AtomicOrdering.h"
@@ -440,10 +447,10 @@ void printGraph(const Graph &graph) {
     llvm::errs() << "  Node " << i << ": "
                  << "  Name: " << node->name;
     // << "  Node in BB: " << node->BB->getNumber()
-    // if(node -> lastMemOp != nullptr)
-    // llvm::errs() << ", Instruction: " << (*node->order);
-    // else
-    // llvm::errs() << "Instruction: " << "NOP";
+    if(node -> lastMemOp != nullptr)
+    llvm::errs() << ", Instruction: " << *(node->lastMemOp);
+    else
+    llvm::errs() << "Instruction: " << "NOP";
     llvm::errs() << ", Ordering: " << atomicOrderingToString(node->order)
                  << ", after: " << (node->after ? "true\n" : "false\n");
   }
@@ -467,14 +474,18 @@ void TransformFunction(Function *fun, Graph &graph) {
       // Check if the instruction is a fence.
       if (isa<FenceInst>(&inst)) {
         // For the fence instruction, build the upward and downward graphs.
-        Node nodeBeforeFence = makeGraphUpwards(&inst, graph);
-        Node nodeAfterFence = makeGraphDownwards(&inst, graph);
+        Node *nodeBeforeFence = makeGraphUpwards(&inst, graph);
+        Node *nodeAfterFence = makeGraphDownwards(&inst, graph);
         // If both nodes exist, connect them.
         if (nodeBeforeFence != nullptr && nodeAfterFence != nullptr) {
-          graph.addNode(&nodeBeforeFence);
-          graph.addNode(&nodeAfterFence);
-          graph.addEdge(&nodeBeforeFence, &nodeAfterFence);
+          graph.addNode(nodeBeforeFence);
+          graph.addNode(nodeAfterFence);
+          graph.addEdge(nodeBeforeFence, nodeAfterFence);
         }
+
+        // Remove the fence
+        inst.eraseFromParent();
+        llvm::errs() << "Removed fence instruction: " << inst;
       }
     }
   }
