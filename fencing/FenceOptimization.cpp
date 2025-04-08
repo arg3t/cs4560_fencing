@@ -32,6 +32,27 @@ AtomicOrdering getOrdering(Instruction *inst) {
   return AtomicOrdering::NotAtomic;
 }
 
+std::string atomicOrderingToString(llvm::AtomicOrdering order) {
+  switch (order) {
+  case llvm::AtomicOrdering::NotAtomic:
+    return "NotAtomic";
+  case llvm::AtomicOrdering::Unordered:
+    return "Unordered";
+  case llvm::AtomicOrdering::Monotonic:
+    return "Monotonic";
+  case llvm::AtomicOrdering::Acquire:
+    return "Acquire";
+  case llvm::AtomicOrdering::Release:
+    return "Release";
+  case llvm::AtomicOrdering::AcquireRelease:
+    return "AcquireRelease";
+  case llvm::AtomicOrdering::SequentiallyConsistent:
+    return "SequentiallyConsistent";
+  default:
+    return "Unknown";
+  }
+}
+
 class Node {
 public:
   BasicBlock *BB;
@@ -76,6 +97,52 @@ public:
   }
 
   bool operator!=(const Node &other) const { return !(*this == other); }
+
+  friend std::ostream &operator<<(std::ostream &os, const Node &node) {
+    os << "{BB: " << node.BB
+       << ", lastMemOp: " << (node.lastMemOp ? node.lastMemOp->getName().str() : "null")
+       << ", order: " << atomicOrderingToString(node.order)
+       << ", after: " << (node.after ? "true" : "false")
+       << ", name: " << node.name << "}";
+    return os;
+  }
+
+  friend raw_ostream &operator<<(raw_ostream &os, const Node &node) {
+
+    // llvm::errs() << "  Node " << i << ": "
+    // << "  Name: " << node->name;
+    // // << "  Node in BB: " << node->BB->getNumber()
+    // if(node -> lastMemOp != NULL)
+    // llvm::errs() << ", Instruction: " << *(node->lastMemOp);
+    // else
+    // llvm::errs() << "Instruction: " << "NOP";
+    // llvm::errs() << ", Ordering: " << atomicOrderingToString(node->order)
+    //              << ", after: " << (node->after ? "true\n" : "false\n");
+
+    // llvm::errs() << "Node " << i << " : " << *node << "\n";
+
+    auto op_string = "none";
+
+    if (node.lastMemOp != NULL) {
+      os << "{BB: " << node.BB
+      << ", Instruction: " << *(node.lastMemOp)
+      << ", order: " << atomicOrderingToString(node.order)
+      << ", after: " << (node.after ? "true" : "false")
+      << ", name: " << node.name
+      << "}";
+      return os;
+    }
+    else {
+      os << "{BB: " << node.BB
+         << ", Instruction: " << "None"
+         << ", order: " << atomicOrderingToString(node.order)
+         << ", after: " << (node.after ? "true" : "false")
+         << ", name: " << node.name
+         << "}";
+      return os;
+
+    }
+  }
 };
 
 struct Edge {
@@ -146,6 +213,8 @@ struct Graph {
 
     if (fromIndex == -1 || toIndex == -1) {
       llvm::errs() << "Error: Node not found in graph.\n";
+      llvm::errs() << "From instruction: " << *from<< " With index: "<< fromIndex << "\n";
+      llvm::errs() << "To instruction: " << *to << " With index: "<< fromIndex << "\n";
       return;
     }
 
@@ -177,6 +246,15 @@ struct Graph {
     }
 
     return AdjacencyList;
+  }
+
+  int findNode(Node *node) {
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      if (*nodes[i] == *node) {
+        return i;
+      }
+    }
+    return -1;
   }
 };
 
@@ -315,6 +393,8 @@ std::vector<Edge*> MinCut(AList_t AdjacencyList) {
 
 Node* makeGraphUpwards(Instruction *root, Graph &graph) {
   //basicBlock ←GetBasicBlock(root)
+  llvm::errs() << "\n";
+  llvm::errs() << "Root instruction: " << *root << "\n";
   auto *bb = root->getParent();
   // for inst an instruction before root in basicBlock, going upwards do
   bool foundRoot = false;
@@ -327,10 +407,12 @@ Node* makeGraphUpwards(Instruction *root, Graph &graph) {
     if (!foundRoot)
       continue;
 
+
+    llvm::errs() << "Found instruction: " << *inst << "\n";
     // if inst a memory access then
     if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
       // node ←GetNodeAfter(inst)
-      llvm::errs() << "\nFound memory access: " << *inst << "\n";
+      llvm::errs() << "\n  Found memory access: " << *inst << "\n";
       Node *node = new Node(inst->getParent(), inst, getOrdering(inst), true);
 
       graph.addNode(node);
@@ -341,9 +423,11 @@ Node* makeGraphUpwards(Instruction *root, Graph &graph) {
   }
 
   Node *node = getNodeAtBeginning(bb);
+  graph.addNode(node);
   // if basic block is first in function
   if (bb == &bb->getParent()->getEntryBlock()) {
-    graph.addNode(node);
+    llvm::errs() << "First basic block in function.\n";
+    llvm::errs() << "Node: " << node << "\n";
     graph.addEdge(graph.source, node);
     return node;
   }
@@ -353,7 +437,6 @@ Node* makeGraphUpwards(Instruction *root, Graph &graph) {
     Node *node2 = getNodeAtEnd(pred);
     graph.addNode(node2);
     auto *lastInst = getLastInst(pred);
-    llvm::errs() << "Last instruction in predecessor: " << *lastInst << "\n";
 
     // Recursively build the upward graph starting at lastInst.
     Node *node3 = makeGraphUpwards(lastInst, graph);
@@ -362,11 +445,13 @@ Node* makeGraphUpwards(Instruction *root, Graph &graph) {
       // Connect the nodes:
       // 1. Connect the current block's beginning node to the predecessor's end
       // node.
-      graph.addEdge(node, node2);
+      graph.addEdge(node2, node);
       // 2. Connect the predecessor end node to the node returned by recursion.
       graph.addNode(node3);
-      graph.addEdge(node2, node3);
+      graph.addEdge(node3, node2);
       return node;
+    } else {
+      llvm::errs() << "Error: Bad IR.\n";
     }
   }
   llvm::errs() << "\n\n\nNo memory access found in the upward graph.\n\n\n";
@@ -402,6 +487,14 @@ Node* makeGraphDownwards(Instruction *root, Graph &graph) {
   }
 
   Node *node = getNodeAtEnd(bb);
+  graph.addNode(node);
+
+  // If the basic block is the last in the function, connect it to the sink.
+  if (succ_empty(bb)) { // Check if the basic block has no successors
+    llvm::errs() << "Last basic block in function.\n";
+    graph.addEdge(node, graph.sink);
+    return node;
+  }
 
   for (BasicBlock *succ : successors(bb)) {
     Node *node2 = getNodeAtBeginning(succ);
@@ -430,40 +523,13 @@ Node* makeGraphDownwards(Instruction *root, Graph &graph) {
 
 // #include "llvm/IR/AtomicOrdering.h"
 
-std::string atomicOrderingToString(llvm::AtomicOrdering order) {
-  switch (order) {
-  case llvm::AtomicOrdering::NotAtomic:
-    return "NotAtomic";
-  case llvm::AtomicOrdering::Unordered:
-    return "Unordered";
-  case llvm::AtomicOrdering::Monotonic:
-    return "Monotonic";
-  case llvm::AtomicOrdering::Acquire:
-    return "Acquire";
-  case llvm::AtomicOrdering::Release:
-    return "Release";
-  case llvm::AtomicOrdering::AcquireRelease:
-    return "AcquireRelease";
-  case llvm::AtomicOrdering::SequentiallyConsistent:
-    return "SequentiallyConsistent";
-  default:
-    return "Unknown";
-  }
-}
+
 
 void printGraph(Graph &graph) {
   llvm::errs() << "Graph Nodes:\n";
   for (int i = 0; i < graph.nodes.size(); ++i) {
     Node *node = graph.nodes[i];
-    llvm::errs() << "  Node " << i << ": "
-                 << "  Name: " << node->name;
-    // << "  Node in BB: " << node->BB->getNumber()
-    if(node -> lastMemOp != NULL)
-    llvm::errs() << ", Instruction: " << *(node->lastMemOp);
-    else
-    llvm::errs() << "Instruction: " << "NOP";
-    llvm::errs() << ", Ordering: " << atomicOrderingToString(node->order)
-                 << ", after: " << (node->after ? "true\n" : "false\n");
+    llvm::errs() << "Node " << i << " : " << *node << "\n";
   }
   llvm::errs() << "Graph Edges:\n";
   for (auto edge : graph.edges) {
