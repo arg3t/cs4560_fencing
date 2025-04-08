@@ -20,3 +20,28 @@ link_directories(${LLVM_LIBRARY_DIRS})
 
 # Our pass lives in this subdirectory.
 add_subdirectory(fencing)
+
+enable_testing()
+
+# Find llvm-lit (customize if needed)
+find_program(LLVM_LIT llvm-lit)
+if(NOT LLVM_LIT)
+  message(FATAL_ERROR "llvm-lit not found. Please install LLVM or set LLVM_LIT path.")
+endif()
+
+# Set default lit arguments
+set(LIT_ARGS "-v")
+
+set(TEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
+
+# Add test target
+add_custom_target(run-lit-tests
+  COMMAND ${LLVM_LIT} ${LIT_ARGS} ${TEST_DIR}
+  DEPENDS opt  # Or your custom-built opt tool or pass
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Running LLVM IR tests with lit..."
+)
+
+# Make `make test` run lit tests
+add_test(NAME run-all-lit-tests
+         COMMAND ${LLVM_LIT} ${LIT_ARGS} ${TEST_DIR})

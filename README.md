@@ -1,13 +1,22 @@
 # Compiling
 
 ```
-mkdir build
+cmake -DLLVM_LIT=lit -DLLVM_DIR=/usr/lib64/cmake/llvm  -S . -B build
+cmake --build build
 cd build
-cmake -DLLVM_DIR=/usr/lib64/cmake/llvm ..
 make
 ```
 
-# Running
+
+# Running the Pass
 ```
-opt -load-pass-plugin ../build/fencing/FencingPass.so -S -passes=fence-tso -o lb_fenced.ll lb.ll
+opt -load-pass-plugin ../build/fencing/FencingPass.so -S -passes=fence-tso <ll_file>
+```
+
+
+# Running the tests
+
+```
+make test
+make run-lit-tests
 ```
