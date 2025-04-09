@@ -56,7 +56,6 @@ std::string atomicOrderingToString(llvm::AtomicOrdering order) {
 class Node {
 public:
   BasicBlock *BB;
-  // Instruction *lastMemOp = nullptr;
   WeakTrackingVH lastMemOp = NULL;
   AtomicOrdering order = AtomicOrdering::NotAtomic;
   int name = 0;
@@ -68,10 +67,12 @@ public:
   Node(BasicBlock *bb) : BB(bb), name(0) {} // Can I have default constructor?
   Node(BasicBlock *bb, WeakTrackingVH lastMemOp, AtomicOrdering order)
       : BB(bb), lastMemOp(lastMemOp), order(order), name(0) {}
-  Node(BasicBlock *bb, WeakTrackingVH lastMemOp, AtomicOrdering order, bool after)
+  Node(BasicBlock *bb, WeakTrackingVH lastMemOp, AtomicOrdering order,
+       bool after)
       : BB(bb), lastMemOp(lastMemOp), order(order), after(after), name(0) {}
 
-  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order, bool after){
+  Node(BasicBlock *bb, Instruction *lastMemOp, AtomicOrdering order,
+       bool after) {
     this->BB = bb;
     this->lastMemOp = WeakTrackingVH(lastMemOp);
     this->order = order;
@@ -92,20 +93,21 @@ public:
   }
 
   bool operator==(const Node &other) const {
-    return BB == other.BB && &lastMemOp == &other.lastMemOp &&
-           order == other.order && after == other.after && name == other.name;
+    // return BB == other.BB && lastMemOp == other.lastMemOp &&
+    //        order == other.order && after == other.after && name ==
+    //        other.name;
+
+    std::string thisStr, otherStr;
+    // Use llvm's raw_string_ostream to capture the output in strings
+    llvm::raw_string_ostream thisStream(thisStr);
+    llvm::raw_string_ostream otherStream(otherStr);
+    thisStream << *this;
+    otherStream << other;
+    // Compare the resulting string representations
+    return thisStream.str() == otherStream.str();
   }
 
   bool operator!=(const Node &other) const { return !(*this == other); }
-
-  friend std::ostream &operator<<(std::ostream &os, const Node &node) {
-    os << "{BB: " << node.BB
-       << ", lastMemOp: " << (node.lastMemOp ? node.lastMemOp->getName().str() : "null")
-       << ", order: " << atomicOrderingToString(node.order)
-       << ", after: " << (node.after ? "true" : "false")
-       << ", name: " << node.name << "}";
-    return os;
-  }
 
   friend raw_ostream &operator<<(raw_ostream &os, const Node &node) {
 
@@ -124,23 +126,17 @@ public:
     auto op_string = "none";
 
     if (node.lastMemOp != NULL) {
-      os << "{BB: " << node.BB
-      << ", Instruction: " << *(node.lastMemOp)
-      << ", order: " << atomicOrderingToString(node.order)
-      << ", after: " << (node.after ? "true" : "false")
-      << ", name: " << node.name
-      << "}";
-      return os;
-    }
-    else {
-      os << "{BB: " << node.BB
-         << ", Instruction: " << "None"
+      os << "{BB: " << node.BB << ", Instruction: " << *(node.lastMemOp)
          << ", order: " << atomicOrderingToString(node.order)
          << ", after: " << (node.after ? "true" : "false")
-         << ", name: " << node.name
-         << "}";
+         << ", name: " << node.name << "}";
       return os;
-
+    } else {
+      os << "{BB: " << node.BB << ", Instruction: " << "None"
+         << ", order: " << atomicOrderingToString(node.order)
+         << ", after: " << (node.after ? "true" : "false")
+         << ", name: " << node.name << "}";
+      return os;
     }
   }
 };
@@ -156,23 +152,21 @@ struct Edge {
 
   Edge(uint64_t src, uint64_t dst, uint32_t capacity, bool residual,
        Edge *reverse)
-      : src(src), dst(dst), capacity(capacity),
-        residual(residual), reverse(reverse) {};
+      : src(src), dst(dst), capacity(capacity), residual(residual),
+        reverse(reverse) {};
 
   Edge(uint64_t src, uint64_t dst, uint32_t capacity, bool residual)
-      : src(src), dst(dst), capacity(capacity),
-        residual(residual), reverse(nullptr) {};
+      : src(src), dst(dst), capacity(capacity), residual(residual),
+        reverse(nullptr) {};
 
-                std::ostream
-            & operator<<(std::ostream &os) {
+  std::ostream &operator<<(std::ostream &os) {
     os << "{src: " << src << ", dst: " << dst << ", capacity: " << capacity
        << ", residual: " << residual << "}";
     return os;
   }
 };
 
-
-using AList_t = std::map<uint64_t, std::vector<Edge*>>;
+using AList_t = std::map<uint64_t, std::vector<Edge *>>;
 
 struct Graph {
   Node *source;
@@ -181,13 +175,23 @@ struct Graph {
   std::vector<Node *> nodes;
   std::vector<std::pair<uint64_t, uint64_t>> edges;
 
-  void addNode(Node *node) {
+  bool addNode(Node *node) {
     for (auto existingNode : nodes) {
+
+      // llvm::errs()<< "Comparing nodes:\n";
+      // llvm::errs() << "Node: " << *node << "\n";
+      // llvm::errs() << "Existing Node: " << *existingNode << "\n";
+
       if (*existingNode == *node) {
-        return;
+
+        llvm::errs() << "Error: Node already exists in graph.\n";
+        llvm::errs() << "Node: " << *node << "\n";
+        llvm::errs() << "Existing Node: " << *existingNode << "\n";
+        return false;
       }
     }
     nodes.push_back(node);
+    return true;
   }
 
   Node *getNode(uint64_t idx) {
@@ -213,8 +217,10 @@ struct Graph {
 
     if (fromIndex == -1 || toIndex == -1) {
       llvm::errs() << "Error: Node not found in graph.\n";
-      llvm::errs() << "From instruction: " << *from<< " With index: "<< fromIndex << "\n";
-      llvm::errs() << "To instruction: " << *to << " With index: "<< fromIndex << "\n";
+      llvm::errs() << "From instruction: " << *from
+                   << " With index: " << fromIndex << "\n";
+      llvm::errs() << "To instruction: " << *to << " With index: " << fromIndex
+                   << "\n";
       return;
     }
 
@@ -282,7 +288,7 @@ Instruction *getFirstInst(BasicBlock *bb) {
   return firstInst;
 }
 
-void augment(std::vector<Edge*> Path) {
+void augment(std::vector<Edge *> Path) {
   uint32_t bottleneck = 0xFFFFFFFF;
 
   for (auto &E : Path) {
@@ -296,8 +302,9 @@ void augment(std::vector<Edge*> Path) {
   }
 }
 
-std::vector<Edge*> FindPath(uint64_t Node, uint64_t Target,
-                           AList_t AdjacencyList, std::set<uint64_t> Visited) {
+std::vector<Edge *> FindPath(uint64_t Node, uint64_t Target,
+                             AList_t AdjacencyList,
+                             std::set<uint64_t> Visited) {
   Visited.insert(Node);
 
   for (auto &E : AdjacencyList[Node]) {
@@ -308,7 +315,7 @@ std::vector<Edge*> FindPath(uint64_t Node, uint64_t Target,
       continue;
 
     if (E->dst == Target)
-      return std::vector<Edge*>{E};
+      return std::vector<Edge *>{E};
 
     auto Path = FindPath(E->dst, Target, AdjacencyList, Visited);
     if (Path.size() > 0) {
@@ -317,19 +324,21 @@ std::vector<Edge*> FindPath(uint64_t Node, uint64_t Target,
     }
   }
 
-  return std::vector<Edge*>{};
+  return std::vector<Edge *>{};
 }
 
-std::vector<Edge*> FindPath(AList_t AdjacencyList) {
+std::vector<Edge *> FindPath(AList_t AdjacencyList) {
   return FindPath(0, 1, AdjacencyList, std::set<uint64_t>{});
 }
 
 AList_t FlowGraph(AList_t AdjacencyList) {
-  std::vector<Edge*> Path = FindPath(AdjacencyList);
+  std::vector<Edge *> Path = FindPath(AdjacencyList);
 
   while (Path.size() > 0) {
-    for(const auto &E : Path){
-      llvm::errs() <<"{src: " << E->src << ", dst: " << E->dst << ", capacity: " << E->capacity << ", residual: "<< E->residual << "}" << "->";
+    for (const auto &E : Path) {
+      llvm::errs() << "{src: " << E->src << ", dst: " << E->dst
+                   << ", capacity: " << E->capacity
+                   << ", residual: " << E->residual << "}" << "->";
     }
     llvm::errs() << "\n";
     augment(Path);
@@ -362,15 +371,15 @@ std::set<uint64_t> MarkVertices(AList_t AdjacencyList) {
   return Marked;
 }
 
-std::vector<Edge*> MinCut(AList_t AdjacencyList) {
+std::vector<Edge *> MinCut(AList_t AdjacencyList) {
   auto Marked = MarkVertices(AdjacencyList);
 
-  for(auto i : Marked ) {
+  for (auto i : Marked) {
     llvm::errs() << i << ", ";
   }
   llvm::errs() << "\n";
 
-  std::vector<Edge*> MinCutEdges{};
+  std::vector<Edge *> MinCutEdges{};
 
   for (const auto &[v, edges] : AdjacencyList) {
     for (const auto &E : edges) {
@@ -391,14 +400,14 @@ std::vector<Edge*> MinCut(AList_t AdjacencyList) {
   return MinCutEdges;
 }
 
-Node* makeGraphUpwards(Instruction *root, Graph &graph) {
-  //basicBlock ←GetBasicBlock(root)
+Node *makeGraphUpwards(Instruction *root, Graph &graph) {
+  // basicBlock ←GetBasicBlock(root)
   llvm::errs() << "\n";
   llvm::errs() << "Root instruction: " << *root << "\n";
   auto *bb = root->getParent();
   // for inst an instruction before root in basicBlock, going upwards do
   bool foundRoot = false;
-  for (auto it = bb -> rbegin(); it != bb -> rend(); it++) {
+  for (auto it = bb->rbegin(); it != bb->rend(); it++) {
     Instruction *inst = &*it;
     if (inst == root) {
       foundRoot = true;
@@ -406,7 +415,6 @@ Node* makeGraphUpwards(Instruction *root, Graph &graph) {
     }
     if (!foundRoot)
       continue;
-
 
     llvm::errs() << "Found instruction: " << *inst << "\n";
     // if inst a memory access then
@@ -423,9 +431,16 @@ Node* makeGraphUpwards(Instruction *root, Graph &graph) {
   }
 
   Node *node = getNodeAtBeginning(bb);
-  graph.addNode(node);
+  bool added = graph.addNode(node);
+
+  if (!added) {
+    llvm::errs() << "Error: Node already exists in graph.\n";
+    llvm::errs() << "Node: " << node << "\n";
+    return node;
+  }
+
   // if basic block is first in function
-  if (bb == &bb->getParent()->getEntryBlock()) {
+  if (pred_empty(bb)) { // Check if the basic block has no predecessors
     llvm::errs() << "First basic block in function.\n";
     llvm::errs() << "Node: " << node << "\n";
     graph.addEdge(graph.source, node);
@@ -456,17 +471,15 @@ Node* makeGraphUpwards(Instruction *root, Graph &graph) {
   }
   llvm::errs() << "\n\n\nNo memory access found in the upward graph.\n\n\n";
   return nullptr;
-
 }
 
-
-Node* makeGraphDownwards(Instruction *root, Graph &graph) {
+Node *makeGraphDownwards(Instruction *root, Graph &graph) {
   // Get the basic block of the root instruction.
   BasicBlock *bb = root->getParent();
 
   // Iterate over the instructions in the basic block, going downwards.
   bool foundRoot = false;
-  for(auto it = bb->begin(); it != bb->end(); it++) {
+  for (auto it = bb->begin(); it != bb->end(); it++) {
     Instruction *inst = &*it;
     if (inst == root) {
       foundRoot = true;
@@ -487,7 +500,13 @@ Node* makeGraphDownwards(Instruction *root, Graph &graph) {
   }
 
   Node *node = getNodeAtEnd(bb);
-  graph.addNode(node);
+  bool added = graph.addNode(node);
+
+  if (!added) {
+    llvm::errs() << "Error: Node already exists in graph.\n";
+    llvm::errs() << "Node: " << node << "\n";
+    return node;
+  }
 
   // If the basic block is the last in the function, connect it to the sink.
   if (succ_empty(bb)) { // Check if the basic block has no successors
@@ -523,8 +542,6 @@ Node* makeGraphDownwards(Instruction *root, Graph &graph) {
 
 // #include "llvm/IR/AtomicOrdering.h"
 
-
-
 void printGraph(Graph &graph) {
   llvm::errs() << "Graph Nodes:\n";
   for (int i = 0; i < graph.nodes.size(); ++i) {
@@ -544,20 +561,29 @@ void printGraph(Graph &graph) {
 // resulting graph.
 void TransformFunction(Function *fun, Graph &graph) {
 
-  llvm::errs() << "\n\n\n------------------\nTransforming function: " << fun->getName() << "\n";
-
+  llvm::errs() << "\n\n\n------------------\nTransforming function: "
+               << fun->getName() << "\n";
 
   // Iterate over each basic block in the function.
   for (auto &bb : *fun) {
     // llvm::errs() << "Basic Block: " << bb.getNumber() << "\n";
     // Iterate over each instruction in the basic block.
     for (auto &inst : bb) {
-      llvm::errs() <<" :::::::::Inst: "<< inst<< "\n";
+      llvm::errs() << " :::::::::Inst: " << inst << "\n";
       // Check if the instruction is a fence.
       if (isa<FenceInst>(&inst)) {
         // For the fence instruction, build the upward and downward graphs.
         Node *nodeBeforeFence = makeGraphUpwards(&inst, graph);
+
+        llvm::errs() << "Made graph upwards.\n";
+        printGraph(graph);
+
+
         Node *nodeAfterFence = makeGraphDownwards(&inst, graph);
+
+        llvm::errs() << "Made graph downwards.\n";
+        printGraph(graph);
+
         // If both nodes exist, connect them.
         if (nodeBeforeFence != nullptr && nodeAfterFence != nullptr) {
           graph.addNode(nodeBeforeFence);
@@ -568,18 +594,17 @@ void TransformFunction(Function *fun, Graph &graph) {
     }
   }
 
-
-
   // Finally, print the graph.
   printGraph(graph);
 
-  for (auto bbIter = fun->begin(), bbEnd = fun->end(); bbIter != bbEnd; ++bbIter) {
+  for (auto bbIter = fun->begin(), bbEnd = fun->end(); bbIter != bbEnd;
+       ++bbIter) {
     BasicBlock &bb = *bbIter;
-    for (auto instIter = bb.begin(), instEnd = bb.end(); instIter != instEnd; ) {
+    for (auto instIter = bb.begin(), instEnd = bb.end(); instIter != instEnd;) {
       Instruction &inst = *instIter;
       // Advance the iterator before removal if needed.
       ++instIter;
-      
+
       if (isa<FenceInst>(&inst)) {
         llvm::errs() << "\nRemoved fence instruction: " << inst << "\n";
         inst.eraseFromParent();
@@ -642,15 +667,42 @@ PreservedAnalyses FenceOptimization::run(Module &M, ModuleAnalysisManager &AM) {
       assert(dst != nullptr);
 
       LLVMContext &context = src->BB->getContext();
-      FenceInst *newFence = new FenceInst(src->BB->getContext(),AtomicOrdering::SequentiallyConsistent);
+      FenceInst *newFence = new FenceInst(
+          src->BB->getContext(), AtomicOrdering::SequentiallyConsistent);
 
       Instruction *lastInst = dyn_cast<Instruction>(src->lastMemOp);
-      if(src->after) {
-        llvm::errs() << "Inserting fence after instruction: " << *lastInst << "\n";
+      if (src->after) {
+        llvm::errs() << "Inserting fence after instruction: " << *lastInst
+                     << "\n";
         newFence->insertAfter(lastInst);
       } else {
-        llvm::errs() << "Inserting fence before instruction: " << *lastInst << "\n";
-        newFence->insertBefore(lastInst);
+
+        llvm::errs() << "Inserting fence before instruction: " << *lastInst
+                     << "\n";
+
+        // If the last instruction is a phi node, insert the fence at the end of
+        // the predecessor block.
+        if (isa<PHINode>(lastInst)) {
+          llvm::errs() << "Last instruction is a PHI node.\n";
+          BasicBlock *BB = lastInst->getParent();
+          BasicBlock *predBB = nullptr; 
+
+          for (BasicBlock *pred : predecessors(BB)) {
+            predBB = pred;
+            break; // Only take the first predecessor
+          }
+
+
+          Instruction *lastPredInst = &*predBB->rbegin();
+          llvm::errs() << "Inserting fence at the end of predecessor block.\n";
+          llvm::errs() << "Last instruction in predecessor block: "
+                       << *lastPredInst << "\n";
+          newFence->insertBefore(lastPredInst);
+        } else {
+          // Otherwise, insert the fence before the last instruction.
+
+          newFence->insertBefore(lastInst);
+        }
       }
       // TODO: Test
     }
