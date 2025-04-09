@@ -86,6 +86,12 @@ void TraverseBBGraphPSO(BasicBlock &BB, AtomicOrdering order,
                  order != AtomicOrdering::SequentiallyConsistent) {
         llvm::errs() << "    Inserting fence before Load due to ordering "
                         "constraints.\n";
+
+        LLVMContext &context = BB.getContext();
+        FenceInst *fence =
+            new FenceInst(context, AtomicOrdering::SequentiallyConsistent);
+        fence->insertAfter(lastMemOp);
+
         IRBuilder<> Builder(&I);
         Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
       }
@@ -109,13 +115,17 @@ void TraverseBBGraphPSO(BasicBlock &BB, AtomicOrdering order,
       if (isa<StoreInst>(lastMemOp)) {
         llvm::errs() << "    Previous OP is a Store, not inserting a fence "
                         "as PSO allows Store-Store reordering.\n";
-        IRBuilder<> Builder(&I);
-        Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
       } else if (isa<LoadInst>(lastMemOp) && order != AtomicOrdering::Acquire &&
                  order != AtomicOrdering::AcquireRelease &&
                  order != AtomicOrdering::SequentiallyConsistent) {
         llvm::errs() << "    Inserting fence before Store (following a Load) "
                         "due to ordering constraints.\n";
+        
+        LLVMContext &context = BB.getContext();
+        FenceInst *fence =
+            new FenceInst(context, AtomicOrdering::SequentiallyConsistent);
+        fence->insertAfter(lastMemOp);
+
         IRBuilder<> Builder(&I);
         Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
       }

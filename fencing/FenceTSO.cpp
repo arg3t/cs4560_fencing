@@ -72,6 +72,13 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
                  order != AtomicOrdering::SequentiallyConsistent) {
         llvm::errs()
             << "    Inserting fence before Load due to ordering constraints.\n";
+
+        // Insert fence after last memop
+        LLVMContext &context = BB.getContext();
+        FenceInst *fence =
+            new FenceInst(context, AtomicOrdering::SequentiallyConsistent);
+        fence->insertAfter(lastMemOp);
+
         IRBuilder<> Builder(&I);
         Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
       }
@@ -97,6 +104,13 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
           order != AtomicOrdering::SequentiallyConsistent) {
         llvm::errs() << "    Inserting fence before Store (following a Store) "
                         "due to ordering constraints.\n";
+
+        // Insert fence after last memop
+        LLVMContext &context = BB.getContext();
+        FenceInst *fence =
+            new FenceInst(context, AtomicOrdering::SequentiallyConsistent);
+        fence->insertAfter(lastMemOp);
+
         IRBuilder<> Builder(&I);
         Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
       } else if (isa<LoadInst>(lastMemOp) && order != AtomicOrdering::Acquire &&
@@ -104,6 +118,12 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
                  order != AtomicOrdering::SequentiallyConsistent) {
         llvm::errs() << "    Inserting fence before Store (following a Load) "
                         "due to ordering constraints.\n";
+
+        LLVMContext &context = BB.getContext();
+        FenceInst *fence =
+            new FenceInst(context, AtomicOrdering::SequentiallyConsistent);
+        fence->insertAfter(lastMemOp);
+
         IRBuilder<> Builder(&I);
         Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
       }
@@ -144,7 +164,7 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
                        << Successor->getName() << "\n";
           TraverseBBGraph(*Successor, order, lastMemOp);
         }
-      } // TODO Might need to handle calls here as well 
+      } // TODO Might need to handle calls here as well
       else {
         llvm::errs() << "    Encountered unsupported terminator instruction.\n";
         return;
