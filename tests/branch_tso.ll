@@ -7,29 +7,37 @@
 
 define void @check_and_update(i32 %param) {
 entry:
-  ; CHECK: icmp sgt i32 %param, 2
+  ; tso: icmp sgt i32 %param, 2
+  ; opt: icmp sgt i32 %param, 2
   %cmp = icmp sgt i32 %param, 2
-  ; CHECK: br i1 %cmp, label %then, label %else
+  ; tso: br i1 %cmp, label %then, label %else
+  ; opt: br i1 %cmp, label %then, label %else
   br i1 %cmp, label %then, label %else
 
 then:
-  ; CHECK-NEXT: load atomic i32, ptr @x monotonic, align 4
+  ; tso: %r1_load = load atomic i32, ptr @x monotonic, align 4
+  ; opt: %r1_load = load atomic i32, ptr @x monotonic, align 4
   %r1_load = load atomic i32, ptr @x monotonic, align 4
-  ; CHECK-NEXT: fence seq_cst
+  ; tso: fence seq_cst
+  ; opt: fence seq_cst
 
   br label %merge
-  ; CHECK-NEXT: br label %merge
+  ; tso: br label %merge
+  ; opt: br label %merge
 
 else:
   br label %merge
-  ; CHECK-NEXT: br label %merge
+  ; tso: br label %merge
+  ; opt: br label %merge
 
 merge:
-  ; CHECK-NEXT: %r1_val = phi i32 [ %r1_load, %then ], [ %param, %else ]
+  ; tso: %r1_val = phi i32 [ %r1_load, %then ], [ %param, %else ]
+  ; opt: %r1_val = phi i32 [ %r1_load, %then ], [ %param, %else ]
   %r1_val = phi i32 [ %r1_load, %then ], [ %param, %else ]
-  ; CHECK-NEXT: tso: fence seq_cst
-  ; CHECK-NOT: opt: fence seq_cst
-  ; CHECK-NEXT: store atomic i32 %r1_val, ptr @y monotonic, align 4
+  ; tso: fence seq_cst
+  ; opt-NOT: fence seq_cst
+  ; tso: store atomic i32 %r1_val, ptr @y monotonic, align 4
+  ; opt: store atomic i32 %r1_val, ptr @y monotonic, align 4
   store atomic i32 %r1_val, ptr @y monotonic, align 4
   ret void
 }
