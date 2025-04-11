@@ -1,7 +1,7 @@
 # Compiling
 
 ```
-cmake -DLLVM_LIT=lit -DLLVM_DIR=/usr/lib64/cmake/llvm  -S . -B build
+cmake -DLLVM_LIT=$(which lit) -DLLVM_DIR=/usr/lib64/cmake/llvm  -S . -B build
 cmake --build build
 cd build
 make

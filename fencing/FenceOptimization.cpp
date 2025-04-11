@@ -175,7 +175,7 @@ struct Graph {
   std::vector<Node *> nodes;
   std::vector<std::pair<uint64_t, uint64_t>> edges;
 
-  bool addNode(Node *node) {
+  Node* addNode(Node *node) {
     for (auto existingNode : nodes) {
 
       // llvm::errs()<< "Comparing nodes:\n";
@@ -183,15 +183,14 @@ struct Graph {
       // llvm::errs() << "Existing Node: " << *existingNode << "\n";
 
       if (*existingNode == *node) {
-
-        llvm::errs() << "Error: Node already exists in graph.\n";
-        llvm::errs() << "Node: " << *node << "\n";
-        llvm::errs() << "Existing Node: " << *existingNode << "\n";
-        return false;
+        // llvm::errs() << "DEBUG: Node already exists in graph.\n";
+        // llvm::errs() << "Node: " << *node << "\n";
+        // llvm::errs() << "Existing Node: " << *existingNode << "\n";
+        return existingNode;
       }
     }
     nodes.push_back(node);
-    return true;
+    return node;
   }
 
   Node *getNode(uint64_t idx) {
@@ -431,13 +430,13 @@ Node *makeGraphUpwards(Instruction *root, Graph &graph) {
   }
 
   Node *node = getNodeAtBeginning(bb);
-  bool added = graph.addNode(node);
+  node = graph.addNode(node);
 
-  if (!added) {
-    llvm::errs() << "Error: Node already exists in graph.\n";
-    llvm::errs() << "Node: " << node << "\n";
-    return node;
-  }
+  // if (!added) {
+  //   llvm::errs() << "Error: Node already exists in graph.\n";
+  //   llvm::errs() << "Node: " << node << "\n";
+  //   return node;
+  // }
 
   // if basic block is first in function
   if (pred_empty(bb)) { // Check if the basic block has no predecessors
@@ -671,40 +670,9 @@ PreservedAnalyses FenceOptimization::run(Module &M, ModuleAnalysisManager &AM) {
           src->BB->getContext(), AtomicOrdering::SequentiallyConsistent);
 
       Instruction *lastInst = dyn_cast<Instruction>(src->lastMemOp);
-      if (src->after) {
-        llvm::errs() << "Inserting fence after instruction: " << *lastInst
-                     << "\n";
-        newFence->insertAfter(lastInst);
-      } else {
-
-        llvm::errs() << "Inserting fence before instruction: " << *lastInst
-                     << "\n";
-
-        // If the last instruction is a phi node, insert the fence at the end of
-        // the predecessor block.
-        if (isa<PHINode>(lastInst)) {
-          llvm::errs() << "Last instruction is a PHI node.\n";
-          BasicBlock *BB = lastInst->getParent();
-          BasicBlock *predBB = nullptr; 
-
-          for (BasicBlock *pred : predecessors(BB)) {
-            predBB = pred;
-            break; // Only take the first predecessor
-          }
-
-
-          Instruction *lastPredInst = &*predBB->rbegin();
-          llvm::errs() << "Inserting fence at the end of predecessor block.\n";
-          llvm::errs() << "Last instruction in predecessor block: "
-                       << *lastPredInst << "\n";
-          newFence->insertBefore(lastPredInst);
-        } else {
-          // Otherwise, insert the fence before the last instruction.
-
-          newFence->insertBefore(lastInst);
-        }
-      }
-      // TODO: Test
+      llvm::errs() << "Inserting fence after instruction: " << *lastInst
+                   << "\n";
+      newFence->insertAfter(lastInst);
     }
   }
 
