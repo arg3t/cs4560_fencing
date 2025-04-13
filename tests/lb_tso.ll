@@ -11,6 +11,7 @@ define void @thread1() {
 ; tso-LABEL: define void @thread1
   ; opt-LABEL: define void @thread1
 ; tso: fence seq_cst
+; opt: fence seq_cst
   %lx = load atomic i32, ptr @x monotonic, align 4
 ; tso-NEXT: load atomic i32, ptr @x monotonic,
 ; opt-NEXT: load atomic i32, ptr @x monotonic,
@@ -33,6 +34,7 @@ define void @thread2() {
 ; tso-LABEL: define void @thread2
 ; opt-LABEL: define void @thread2
 ; tso: fence seq_cst
+; opt: fence seq_cst
   %ly = load atomic i32, ptr @y monotonic, align 4
 ; tso-NEXT: load atomic i32, ptr @y monotonic,
 ; opt-NEXT: load atomic i32, ptr @y monotonic,

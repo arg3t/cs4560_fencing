@@ -223,6 +223,11 @@ struct Graph {
       return;
     }
 
+    if (fromIndex == toIndex) {
+      llvm::errs() << "Error: Cannot add edge from node to itself.\n";
+      return;
+    }
+
     // Check if the edge already exists
     for (const auto &edge : edges) {
       if (edge.first == fromIndex && edge.second == toIndex) {
@@ -529,7 +534,7 @@ Node *makeGraphDownwards(Instruction *root, Graph &graph) {
           continue;
         }
       }
-      
+
       llvm::errs() << "Found memory access or return: " << *inst << "\n";
       Node *node = new Node(inst->getParent(), inst, getOrdering(inst), false);
       graph.addNode(node);
@@ -696,8 +701,23 @@ PreservedAnalyses FenceOptimization::run(Module &M, ModuleAnalysisManager &AM) {
     llvm::errs() << "\nInserting fences in new **optimal** positions.\n";
 
     for (const auto &E : MinCutEdges) {
-      if (E->src == 0 || E->dst == 1)
+      // if (E->src == 0 || E->dst == 1)
+      //   continue;
+
+      if(E->src == 0){
+        auto dst = graph.getNode(E->dst);
+
+        assert(dst != nullptr);
+
+        LLVMContext &context = dst->BB->getContext();
+        FenceInst *newFence = new FenceInst(
+            dst->BB->getContext(), AtomicOrdering::SequentiallyConsistent);
+        Instruction *lastInst = dyn_cast<Instruction>(dst->lastMemOp);
+        llvm::errs() << "Inserting fence before instruction: " << *lastInst
+                     << "\n";
+        newFence->insertBefore(lastInst);
         continue;
+      }
 
       auto src = graph.getNode(E->src);
       auto dst = graph.getNode(E->dst);
