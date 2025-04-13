@@ -1,4 +1,4 @@
-; RUN: opt -load-pass-plugin ../build/fencing/FencingPass.so -S -passes=fence-pso < %s | FileCheck %s -check-prefix=tso
+; RUN: opt -load-pass-plugin ../build/fencing/FencingPass.so -S -passes=fence-pso < %s | FileCheck %s -check-prefix=pso
 ; RUN: opt -load-pass-plugin ../build/fencing/FencingPass.so -S -passes=fence-pso,fence-opt < %s | FileCheck %s -check-prefix=opt
 
 @x = global i32 0, align 4
