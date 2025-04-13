@@ -431,6 +431,22 @@ Node *makeGraphUpwards(Instruction *root, Graph &graph) {
     // if inst a memory access then
     if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
       // node ←GetNodeAfter(inst)
+
+
+      if(isa<LoadInst>(inst)) {
+        LoadInst *loadInst = cast<LoadInst>(inst);
+        AtomicOrdering order = loadInst->getOrdering();
+        if (order == AtomicOrdering::NotAtomic) {
+          continue;
+        }
+      } else if(isa<StoreInst>(inst)) {
+        StoreInst *storeInst = cast<StoreInst>(inst);
+        AtomicOrdering order = storeInst->getOrdering();
+        if (order == AtomicOrdering::NotAtomic) {
+          continue;
+        }
+      }
+
       llvm::errs() << "\n  Found memory access: " << *inst << "\n";
       Node *node = new Node(inst->getParent(), inst, getOrdering(inst), true);
 
@@ -499,6 +515,21 @@ Node *makeGraphDownwards(Instruction *root, Graph &graph) {
 
     // If inst is a memory access, create a node.
     if (isa<LoadInst>(inst) || isa<StoreInst>(inst) || isa<ReturnInst>(inst)) {
+
+      if(isa<LoadInst>(inst)) {
+        LoadInst *loadInst = cast<LoadInst>(inst);
+        AtomicOrdering order = loadInst->getOrdering();
+        if (order == AtomicOrdering::NotAtomic) {
+          continue;
+        }
+      } else if(isa<StoreInst>(inst)) {
+        StoreInst *storeInst = cast<StoreInst>(inst);
+        AtomicOrdering order = storeInst->getOrdering();
+        if (order == AtomicOrdering::NotAtomic) {
+          continue;
+        }
+      }
+      
       llvm::errs() << "Found memory access or return: " << *inst << "\n";
       Node *node = new Node(inst->getParent(), inst, getOrdering(inst), false);
       graph.addNode(node);
