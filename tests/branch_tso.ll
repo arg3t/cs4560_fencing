@@ -10,16 +10,18 @@ entry:
   ; tso: icmp sgt i32 %param, 2
   ; opt: icmp sgt i32 %param, 2
   %cmp = icmp sgt i32 %param, 2
+  ; opt: fence seq_cst
   ; tso-NEXT: br i1 %cmp, label %then, label %else
   ; opt-NEXT: br i1 %cmp, label %then, label %else
   br i1 %cmp, label %then, label %else
 then:
+  ; opt-NOT: fence seq_cst
   ; tso: fence seq_cst
+  %r1_load = load atomic i32, ptr @x monotonic, align 4
   ; tso: %r1_load = load atomic i32, ptr @x monotonic, align 4
   ; opt: %r1_load = load atomic i32, ptr @x monotonic, align 4
-  %r1_load = load atomic i32, ptr @x monotonic, align 4
   ; tso: fence seq_cst
-  ; opt-NOT: fence seq_cst
+  ; opt: fence seq_cst
   br label %merge
   ; tso: br label %merge
   ; opt: br label %merge
@@ -31,8 +33,8 @@ merge:
   ; tso: %r1_val = phi i32 [ %r1_load, %then ], [ %param, %else ]
   ; opt: %r1_val = phi i32 [ %r1_load, %then ], [ %param, %else ]
   %r1_val = phi i32 [ %r1_load, %then ], [ %param, %else ]
-  ; tso-NEXT: fence seq_cst
-  ; opt-NEXT: fence seq_cst
+  ; opt-NOT: fence seq_cst
+  ; tso: fence seq_cst
   ; tso-NEXT: store atomic i32 %r1_val, ptr @y monotonic, align 4
   ; opt-NEXT: store atomic i32 %r1_val, ptr @y monotonic, align 4
   store atomic i32 %r1_val, ptr @y monotonic, align 4

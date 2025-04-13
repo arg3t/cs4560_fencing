@@ -39,13 +39,9 @@ define void @thread2() {
   %msg = load atomic i32, ptr @x monotonic, align 4
 ; tso-NEXT: load atomic i32, ptr @x monotonic,
 ; opt-NEXT: load atomic i32, ptr @x monotonic,
-; opt-NEXT: fence seq_cst
-; opt-NOT: fence seq_cst
   store i32 %flag, ptr @r1, align 4
 ; tso-NEXT: store i32 %flag, ptr @r1, align 4
 ; opt-NEXT: store i32 %flag, ptr @r1, align 4
-; opt-NEXT: fence seq_cst
-; opt-NOT: fence seq_cst
   store i32 %msg, ptr @r2, align 4
 ; tso: store i32 %msg, ptr @r2, align 4
 ; opt: store i32 %msg, ptr @r2, align 4

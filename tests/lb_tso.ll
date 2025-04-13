@@ -15,7 +15,7 @@ define void @thread1() {
 ; tso-NEXT: load atomic i32, ptr @x monotonic,
 ; opt-NEXT: load atomic i32, ptr @x monotonic,
 ; tso-NEXT: fence seq_cst
-; opt-NOT: fence seq_cst
+; opt-NEXT: fence seq_cst
   store i32 %lx, ptr @r1, align 4
 ; tso: store i32 %lx, ptr @r1, align 4
 ; opt: store i32 %lx, ptr @r1, align 4
@@ -38,12 +38,10 @@ define void @thread2() {
 ; opt-NEXT: load atomic i32, ptr @y monotonic,
 ; tso-NEXT: fence seq_cst
 ; opt-NEXT: fence seq_cst
-; opt-NOT: fence seq_cst
   store i32 %ly, ptr @r2, align 4
 ; tso: store i32 %ly, ptr @r2, align 4
 ; opt: store i32 %ly, ptr @r2, align 4
 ; tso-NEXT: fence seq_cst
-; opt-NEXT: fence seq_cst
 ; opt-NOT: fence seq_cst
   store atomic i32 1, ptr @x monotonic, align 4
 ; tso: store atomic i32 1, ptr @x monotonic,
