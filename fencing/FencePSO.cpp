@@ -17,8 +17,6 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/PassManager.h"
-#include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -31,8 +29,6 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
-#include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/AtomicOrdering.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
@@ -64,7 +60,7 @@ void TraverseBBGraphPSO(BasicBlock &BB, AtomicOrdering order,
       if (lastMemOp == nullptr) {
         lastMemOp = &I;
 
-        if (loadOrder == AtomicOrdering::Monotonic || loadOrder == AtomicOrdering::Unordered) {
+        if (order == AtomicOrdering:: Unordered && (loadOrder == AtomicOrdering::Monotonic || loadOrder == AtomicOrdering::Unordered)) {
           IRBuilder<> Builder(&I);
           Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
         }
@@ -121,7 +117,7 @@ void TraverseBBGraphPSO(BasicBlock &BB, AtomicOrdering order,
       if (lastMemOp == nullptr) {
         lastMemOp = &I;
 
-        if (storeOrder == AtomicOrdering::Monotonic || storeOrder == AtomicOrdering::Unordered) {
+        if (order == AtomicOrdering:: Unordered && (storeOrder == AtomicOrdering::Monotonic || storeOrder == AtomicOrdering::Unordered)) {
           IRBuilder<> Builder(&I);
           Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
         }

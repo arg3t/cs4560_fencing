@@ -50,7 +50,7 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
       if (lastMemOp == nullptr) {
         lastMemOp = &I;
 
-        if (loadOrder == AtomicOrdering::Monotonic || loadOrder == AtomicOrdering::Unordered) {
+        if (order == AtomicOrdering:: Unordered && (loadOrder == AtomicOrdering::Monotonic || loadOrder == AtomicOrdering::Unordered)) {
           IRBuilder<> Builder(&I);
           Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
         }
@@ -108,7 +108,7 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
       if (lastMemOp == nullptr) {
         lastMemOp = &I;
 
-        if (storeOrder == AtomicOrdering::Monotonic || storeOrder == AtomicOrdering::Unordered) {
+        if (order == AtomicOrdering:: Unordered && (storeOrder == AtomicOrdering::Monotonic || storeOrder == AtomicOrdering::Unordered)) {
           IRBuilder<> Builder(&I);
           Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
         }
