@@ -9,15 +9,16 @@
 define void @thread1() {
   ; pso-LABEL: define void @thread1
   ; opt-LABEL: define void @thread1
+  ; pso: fence seq_cst
   %lx = load atomic i32, ptr @x monotonic, align 4
   ; pso: load atomic i32, ptr @x monotonic,
-  ; pso: fence seq_cst
   ; pso: fence seq_cst
   ; opt: fence seq_cst
   ; opt-NOT: fence seq_cst
   store i32 %lx, ptr @r1, align 4
   ; pso: store i32 %lx, ptr @r1, align 4
   ; opt: store i32 %lx, ptr @r1, align 4
+  ; pso: fence seq_cst
   store atomic i32 1, ptr @y monotonic, align 4
   ; pso: store atomic i32 1, ptr @y monotonic,
   ; opt: store atomic i32 1, ptr @y monotonic,
@@ -29,16 +30,17 @@ define void @thread1() {
 define void @thread2() {
   ; pso-LABEL: define void @thread2
   ; opt-LABEL: define void @thread2
+  ; pso: fence seq_cst
   %ly = load atomic i32, ptr @y monotonic, align 4
   ; pso: load atomic i32, ptr @y monotonic,
   ; opt: load atomic i32, ptr @y monotonic,
-  ; pso: fence seq_cst
   ; pso: fence seq_cst
   ; opt: fence seq_cst
   ; opt-NOT: fence seq_cst
   store i32 %ly, ptr @r2, align 4
   ; pso: store i32 %ly, ptr @r2, align 4
   ; opt: store i32 %ly, ptr @r2, align 4
+  ; pso: fence seq_cst
   store atomic i32 1, ptr @x monotonic, align 4
   ; pso: store atomic i32 1, ptr @x monotonic,
   ; opt: store atomic i32 1, ptr @x monotonic,

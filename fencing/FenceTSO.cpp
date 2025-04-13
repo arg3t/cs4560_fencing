@@ -42,12 +42,23 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
 
     // Handle Load instructions
     if (auto *Load = dyn_cast<LoadInst>(&I)) {
+      AtomicOrdering loadOrder = Load->getOrdering();
+
+      if (loadOrder == AtomicOrdering::NotAtomic)
+        continue;
+
       if (lastMemOp == nullptr) {
         lastMemOp = &I;
+
+        if (loadOrder == AtomicOrdering::Monotonic || loadOrder == AtomicOrdering::Unordered) {
+          IRBuilder<> Builder(&I);
+          Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
+        }
+
+        order = loadOrder;
         continue;
       }
 
-      AtomicOrdering loadOrder = Load->getOrdering();
       llvm::errs() << "  Found Load instruction with ordering: "
                    << (unsigned)loadOrder << "\n";
 
@@ -89,12 +100,23 @@ void TraverseBBGraph(BasicBlock &BB, AtomicOrdering order,
 
     // Handle Store instructions
     else if (auto *Store = dyn_cast<StoreInst>(&I)) {
+      AtomicOrdering storeOrder = Store->getOrdering();
+
+      if (storeOrder == AtomicOrdering::NotAtomic)
+        continue;
+
       if (lastMemOp == nullptr) {
         lastMemOp = &I;
+
+        if (storeOrder == AtomicOrdering::Monotonic || storeOrder == AtomicOrdering::Unordered) {
+          IRBuilder<> Builder(&I);
+          Builder.CreateFence(AtomicOrdering::SequentiallyConsistent);
+        }
+
+        order = storeOrder;
         continue;
       }
 
-      AtomicOrdering storeOrder = Store->getOrdering();
       llvm::errs() << "  Found Store instruction with ordering: "
                    << (unsigned)storeOrder << "\n";
 

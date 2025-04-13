@@ -14,6 +14,7 @@ entry:
   ; opt-NEXT: br i1 %cmp, label %then, label %else
   br i1 %cmp, label %then, label %else
 then:
+  ; tso: fence seq_cst
   ; tso: %r1_load = load atomic i32, ptr @x monotonic, align 4
   ; opt: %r1_load = load atomic i32, ptr @x monotonic, align 4
   %r1_load = load atomic i32, ptr @x monotonic, align 4

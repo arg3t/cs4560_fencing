@@ -9,14 +9,13 @@
 define void @thread1() {
 ; tso-LABEL: define void @thread1
 ; opt-LABEL: define void @thread1
+; tso-NEXT: fence seq_cst
   store atomic i32 1, ptr @x monotonic, align 4
 ; tso: store atomic i32 1, ptr @x monotonic, align 4
 ; opt: store atomic i32 1, ptr @x monotonic, align 4
   %ly = load atomic i32, ptr @y monotonic, align 4
 ; tso-NEXT: %ly = load atomic i32, ptr @y monotonic, align 4
 ; opt-NEXT: %ly = load atomic i32, ptr @y monotonic, align 4
-; tso-NEXT: fence seq_cst
-; tso-NEXT: fence seq_cst
 ; opt-NEXT: fence seq_cst
 ; opt-NOT: fence seq_cst
   store i32 %ly, ptr @r1, align 4
@@ -30,14 +29,13 @@ define void @thread1() {
 define void @thread2() {
 ; tso-LABEL: define void @thread2
 ; opt-LABEL: define void @thread2
+; tso-NEXT: fence seq_cst
   store atomic i32 1, ptr @y monotonic, align 4
 ; tso: store atomic i32 1, ptr @y monotonic,
 ; opt: store atomic i32 1, ptr @y monotonic,
   %lx = load atomic i32, ptr @x monotonic, align 4
 ; tso-NEXT: %lx = load atomic i32, ptr @x monotonic, align 4
 ; opt-NEXT: %lx = load atomic i32, ptr @x monotonic, align 4
-; tso-NEXT: fence seq_cst
-; tso-NEXT: fence seq_cst
 ; opt-NEXT: fence seq_cst
 ; opt-NOT: fence seq_cst
   store i32 %lx, ptr @r2, align 4
