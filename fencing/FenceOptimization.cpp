@@ -175,7 +175,7 @@ struct Graph {
   std::vector<Node *> nodes;
   std::vector<std::pair<uint64_t, uint64_t>> edges;
 
-  Node* addNode(Node *node) {
+  Node *addNode(Node *node) {
     for (auto existingNode : nodes) {
 
       // llvm::errs()<< "Comparing nodes:\n";
@@ -463,11 +463,9 @@ Node *makeGraphUpwards(Instruction *root, Graph &graph) {
       // 2. Connect the predecessor end node to the node returned by recursion.
       graph.addNode(node3);
       graph.addEdge(node3, node2);
-      return node;
-    } else {
-      llvm::errs() << "Error: Bad IR.\n";
     }
   }
+  return node;
   llvm::errs() << "\n\n\nNo memory access found in the upward graph.\n\n\n";
   return nullptr;
 }
@@ -499,13 +497,13 @@ Node *makeGraphDownwards(Instruction *root, Graph &graph) {
   }
 
   Node *node = getNodeAtEnd(bb);
-  bool added = graph.addNode(node);
+  node = graph.addNode(node);
 
-  if (!added) {
-    llvm::errs() << "Error: Node already exists in graph.\n";
-    llvm::errs() << "Node: " << node << "\n";
-    return node;
-  }
+  // if (!added) {
+  //   llvm::errs() << "Error: Node already exists in graph.\n";
+  //   llvm::errs() << "Node: " << node << "\n";
+  //   return node;
+  // }
 
   // If the basic block is the last in the function, connect it to the sink.
   if (succ_empty(bb)) { // Check if the basic block has no successors
@@ -531,10 +529,10 @@ Node *makeGraphDownwards(Instruction *root, Graph &graph) {
       // recursion.
       graph.addNode(node3);
       graph.addEdge(node2, node3);
-      return node;
     }
   }
 
+  return node;
   // If none of the successor branches return a node, return nullptr.
   return nullptr;
 }
@@ -576,7 +574,6 @@ void TransformFunction(Function *fun, Graph &graph) {
 
         llvm::errs() << "Made graph upwards.\n";
         printGraph(graph);
-
 
         Node *nodeAfterFence = makeGraphDownwards(&inst, graph);
 
