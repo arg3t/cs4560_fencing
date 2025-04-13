@@ -265,6 +265,12 @@ struct Graph {
 
 Node *getNodeAtBeginning(BasicBlock *bb) {
   Instruction *firstInst = &*bb->begin();
+
+  // if firstint is a fence instruction, then use the next instruction
+  if (isa<FenceInst>(firstInst)) {
+    firstInst = &*std::next(bb->begin());
+  }
+
   Node *node = new Node(bb, firstInst, getOrdering(firstInst), false);
   node->after = false;
   return node;
@@ -272,6 +278,12 @@ Node *getNodeAtBeginning(BasicBlock *bb) {
 
 Node *getNodeAtEnd(BasicBlock *bb) {
   Instruction *lastInst = &*bb->rbegin();
+
+  // if lastInst is a fence instruction, then use the previous instruction
+  if (isa<FenceInst>(lastInst)) {
+    lastInst = &*std::prev(bb->rend());
+  }
+
   Node *node = new Node(bb, lastInst, getOrdering(lastInst), true);
   node->after = true;
   return node;
