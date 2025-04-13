@@ -265,6 +265,12 @@ struct Graph {
 
 Node *getNodeAtBeginning(BasicBlock *bb) {
   Instruction *firstInst = &*bb->begin();
+
+  // if firstint is a fence instruction, then use the next instruction
+  if (isa<FenceInst>(firstInst)) {
+    firstInst = &*std::next(bb->begin());
+  }
+
   Node *node = new Node(bb, firstInst, getOrdering(firstInst), false);
   node->after = false;
   return node;
@@ -272,6 +278,12 @@ Node *getNodeAtBeginning(BasicBlock *bb) {
 
 Node *getNodeAtEnd(BasicBlock *bb) {
   Instruction *lastInst = &*bb->rbegin();
+
+  // if lastInst is a fence instruction, then use the previous instruction
+  if (isa<FenceInst>(lastInst)) {
+    lastInst = &*std::prev(bb->rend());
+  }
+
   Node *node = new Node(bb, lastInst, getOrdering(lastInst), true);
   node->after = true;
   return node;
@@ -419,6 +431,22 @@ Node *makeGraphUpwards(Instruction *root, Graph &graph) {
     // if inst a memory access then
     if (isa<LoadInst>(inst) || isa<StoreInst>(inst)) {
       // node ←GetNodeAfter(inst)
+
+
+      if(isa<LoadInst>(inst)) {
+        LoadInst *loadInst = cast<LoadInst>(inst);
+        AtomicOrdering order = loadInst->getOrdering();
+        if (order == AtomicOrdering::NotAtomic) {
+          continue;
+        }
+      } else if(isa<StoreInst>(inst)) {
+        StoreInst *storeInst = cast<StoreInst>(inst);
+        AtomicOrdering order = storeInst->getOrdering();
+        if (order == AtomicOrdering::NotAtomic) {
+          continue;
+        }
+      }
+
       llvm::errs() << "\n  Found memory access: " << *inst << "\n";
       Node *node = new Node(inst->getParent(), inst, getOrdering(inst), true);
 
@@ -487,6 +515,21 @@ Node *makeGraphDownwards(Instruction *root, Graph &graph) {
 
     // If inst is a memory access, create a node.
     if (isa<LoadInst>(inst) || isa<StoreInst>(inst) || isa<ReturnInst>(inst)) {
+
+      if(isa<LoadInst>(inst)) {
+        LoadInst *loadInst = cast<LoadInst>(inst);
+        AtomicOrdering order = loadInst->getOrdering();
+        if (order == AtomicOrdering::NotAtomic) {
+          continue;
+        }
+      } else if(isa<StoreInst>(inst)) {
+        StoreInst *storeInst = cast<StoreInst>(inst);
+        AtomicOrdering order = storeInst->getOrdering();
+        if (order == AtomicOrdering::NotAtomic) {
+          continue;
+        }
+      }
+      
       llvm::errs() << "Found memory access or return: " << *inst << "\n";
       Node *node = new Node(inst->getParent(), inst, getOrdering(inst), false);
       graph.addNode(node);
