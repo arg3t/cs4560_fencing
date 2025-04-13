@@ -595,8 +595,8 @@ void printGraph(Graph &graph) {
   }
   llvm::errs() << "Graph Edges:\n";
   for (auto edge : graph.edges) {
-    llvm::errs() << "  Edge from BB: " << edge.first
-                 << " to BB: " << edge.second << "\n";
+    llvm::errs() << "  Edge from Node: " << edge.first
+                 << " to Node: " << edge.second << "\n";
   }
 }
 
